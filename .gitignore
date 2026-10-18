@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Modelle und Audio (zu groß fürs Repo)
+models/
+*.pth
+*.ckpt
+*.onnx
+*.index
+audio/
+ausgabe/
+
+# .NET
+bin/
+obj/
+.vs/
