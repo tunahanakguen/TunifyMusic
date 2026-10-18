@@ -3,7 +3,8 @@
 # TUNAS Voicify
 
 Gesang oder Melodie in den Klang eines Instruments (zuerst Klavier) umwandeln, komplett lokal unter Windows.
-Eigenständiges Projekt, getrennt vom TuNAS Converter und vom TUNAS Cutter.
+Eigenständiges Projekt, getrennt vom TuNAS Converter und vom TUNAS Cutter. Schwester-App: [TUNAS Stems](../TunasStems)
+(gemeinsamer Python-Motor geplant).
 
 Hintergrund, Bausteine und Fahrplan: [KONZEPT.md](KONZEPT.md) · Analyse des Vorbilds: [notizen/musicfy-analyse.md](notizen/musicfy-analyse.md)
 

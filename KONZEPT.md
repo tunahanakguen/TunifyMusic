@@ -17,6 +17,10 @@ Es werden nur freie Modelle und Werkzeuge verwendet.
 
 Analyse von Musicfy: [notizen/musicfy-analyse.md](notizen/musicfy-analyse.md)
 
+**Schwester-App:** [TUNAS Stems](../TunasStems) (Stem-Splitter wie Fadr, eigenes Repo). Das Ziel ist ein
+**gemeinsamer Python-Motor** für Trennung (audio-separator/Demucs), FFmpeg und Modellverwaltung.
+Voicify ergänzt RVC, Stems ergänzt die Analyse (Tempo, Tonart, Akkorde, MIDI).
+
 ## Ablauf (wie Musicfy)
 
 ```
