@@ -1,4 +1,4 @@
-# TUNAS Musicfyum – Konzept
+# TUNAS Voicify – Konzept
 
 Autor: Tunahan A. · Stand: 18.10.2026 · Phase: **Informationen sammeln**
 
@@ -8,7 +8,7 @@ Eine Windows-App, die Gesang oder eine Melodie in den Klang eines Instruments (z
 anderen Stimme umwandelt, so wie „Convert Voice“ bei Musicfy, aber **komplett lokal** auf dem eigenen PC,
 ohne Tageslimit und ohne Konto.
 
-TUNAS Musicfyum ist ein **eigenständiges Projekt**, getrennt vom TuNAS Converter und vom TUNAS Cutter.
+TUNAS Voicify ist ein **eigenständiges Projekt**, getrennt vom TuNAS Converter und vom TUNAS Cutter.
 Lizenz: GPL-3.0.
 
 **Spielregel:** Wir bauen die *Funktion* nach, nicht den Dienst. Von Musicfy werden keine Modelle,
@@ -59,8 +59,7 @@ Datei / Mikrofon / (YouTube-Link)
 2. **Motor**: Applio als fertiges Paket mitliefern oder eine schlanke eigene Python-Pipeline (rvc-python + audio-separator)?
 3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
 4. **Training in der App** (eigene Stimme / eigenes Instrument) gleich mit einplanen oder später?
-5. **Name**: „Musicfy“ ist eine fremde Marke. Für eine Veröffentlichung besser ein eigener Name
-   (z. B. TUNAS Voice, TUNAS Tone).
+5. ~~**Name**~~: entschieden am 18.10.2026 → **TUNAS Voicify**
 
 ## Fahrplan (Entwurf)
 

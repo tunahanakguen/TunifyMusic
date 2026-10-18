@@ -1,6 +1,6 @@
 <img src="branding/tunas-logo-1024.png" alt="TUNAS-Logo" width="96">
 
-# TUNAS Musicfyum
+# TUNAS Voicify
 
 Gesang oder Melodie in den Klang eines Instruments (zuerst Klavier) umwandeln, komplett lokal unter Windows.
 Eigenständiges Projekt, getrennt vom TuNAS Converter und vom TUNAS Cutter.
