@@ -2,7 +2,8 @@
 
 # Tunify Music
 
-Gesang oder Melodie in den Klang eines Instruments (zuerst Klavier) umwandeln, komplett lokal unter Windows.
+Musicfy lokal nachgebaut: Gesang oder Melodie in den Klang eines Instruments (zuerst Klavier) umwandeln,
+eigene Stimmen trainieren und später ganze Lieder erzeugen, komplett lokal unter Windows.
 Eigenständiges Projekt, teilt nichts mit anderen Apps.
 
 Hintergrund, Bausteine und Fahrplan: [KONZEPT.md](KONZEPT.md) · Analyse des Vorbilds: [notizen/musicfy-analyse.md](notizen/musicfy-analyse.md)
