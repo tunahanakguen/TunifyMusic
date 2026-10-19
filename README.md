@@ -1,6 +1,6 @@
 <img src="branding/tunas-logo-1024.png" alt="TUNAS-Logo" width="96">
 
-# TUNAS Voicify
+# Tunify Music
 
 Gesang oder Melodie in den Klang eines Instruments (zuerst Klavier) umwandeln, komplett lokal unter Windows.
 Eigenständiges Projekt, getrennt vom TuNAS Converter und vom TUNAS Cutter. Schwester-App: [TUNAS Stems](../TunasStems)

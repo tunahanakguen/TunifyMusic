@@ -1,4 +1,4 @@
-# TUNAS Voicify – Konzept
+# Tunify Music – Konzept
 
 Autor: Tunahan A. · Stand: 18.10.2026 · Phase: **Informationen sammeln**
 
@@ -8,7 +8,7 @@ Eine Windows-App, die Gesang oder eine Melodie in den Klang eines Instruments (z
 anderen Stimme umwandelt, so wie „Convert Voice“ bei Musicfy, aber **komplett lokal** auf dem eigenen PC,
 ohne Tageslimit und ohne Konto.
 
-TUNAS Voicify ist ein **eigenständiges Projekt**, getrennt vom TuNAS Converter und vom TUNAS Cutter.
+Tunify Music ist ein **eigenständiges Projekt**, getrennt vom TuNAS Converter und vom TUNAS Cutter.
 Lizenz: GPL-3.0.
 
 **Spielregel:** Wir bauen die *Funktion* nach, nicht den Dienst. Von Musicfy werden keine Modelle,
@@ -19,7 +19,7 @@ Analyse von Musicfy: [notizen/musicfy-analyse.md](notizen/musicfy-analyse.md)
 
 **Schwester-App:** [TUNAS Stems](../TunasStems) (Stem-Splitter wie Fadr, eigenes Repo). Das Ziel ist ein
 **gemeinsamer Python-Motor** für Trennung (audio-separator/Demucs), FFmpeg und Modellverwaltung.
-Voicify ergänzt RVC, Stems ergänzt die Analyse (Tempo, Tonart, Akkorde, MIDI).
+Tunify Music ergänzt RVC, Stems ergänzt die Analyse (Tempo, Tonart, Akkorde, MIDI).
 
 ## Ablauf (wie Musicfy)
 
@@ -63,7 +63,7 @@ Datei / Mikrofon / (YouTube-Link)
 2. **Motor**: Applio als fertiges Paket mitliefern oder eine schlanke eigene Python-Pipeline (rvc-python + audio-separator)?
 3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
 4. **Training in der App** (eigene Stimme / eigenes Instrument) gleich mit einplanen oder später?
-5. ~~**Name**~~: entschieden am 18.10.2026 → **TUNAS Voicify**
+5. ~~**Name**~~: entschieden am 19.10.2026 → **Tunify Music** (vorher TUNAS Musicfyum, TUNAS Voicify)
 
 ## Fahrplan (Entwurf)
 
