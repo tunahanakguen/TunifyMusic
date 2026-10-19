@@ -23,7 +23,7 @@ body {
 
 .shell {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 250px 1fr;
   grid-template-rows: 56px 1fr;
   height: 100vh;
 }
@@ -60,6 +60,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  gap: 12px;
   padding: 10px 12px;
   border-radius: 6px;
 }
@@ -71,6 +72,8 @@ body {
 
 .nav-item small {
   font-size: 11px;
+  white-space: nowrap;
+  color: var(--muted);
 }
 
 .content {
