@@ -8,7 +8,7 @@ Eine Windows-App, die Gesang oder eine Melodie in den Klang eines Instruments (z
 anderen Stimme umwandelt, so wie „Convert Voice“ bei Musicfy, aber **komplett lokal** auf dem eigenen PC,
 ohne Tageslimit und ohne Konto.
 
-Tunify Music ist ein **eigenständiges Projekt**, getrennt vom TuNAS Converter und vom TUNAS Cutter.
+Tunify Music ist ein **eigenständiges Projekt** und teilt nichts mit anderen Apps.
 Lizenz: GPL-3.0.
 
 **Spielregel:** Wir bauen die *Funktion* nach, nicht den Dienst. Von Musicfy werden keine Modelle,
@@ -16,10 +16,6 @@ Programmteile, Grafiken oder Texte übernommen, und die Musicfy-Server werden ni
 Es werden nur freie Modelle und Werkzeuge verwendet.
 
 Analyse von Musicfy: [notizen/musicfy-analyse.md](notizen/musicfy-analyse.md)
-
-**Schwester-App:** [TUNAS Stems](../TunasStems) (Stem-Splitter wie Fadr, eigenes Repo). Das Ziel ist ein
-**gemeinsamer Python-Motor** für Trennung (audio-separator/Demucs), FFmpeg und Modellverwaltung.
-Tunify Music ergänzt RVC, Stems ergänzt die Analyse (Tempo, Tonart, Akkorde, MIDI).
 
 ## Ablauf (wie Musicfy)
 
