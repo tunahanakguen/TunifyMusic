@@ -1,6 +1,6 @@
 # Tunify Music – Konzept
 
-Autor: Tunahan A. · Stand: 19.10.2026 · Phase: **Informationen sammeln**
+Autor: Tunahan A. · Stand: 20.10.2026 · Phase: **Informationen sammeln**
 
 ## Ziel
 
@@ -77,18 +77,43 @@ Info: Name, Typ (Stimme / Instrument), Abtastrate 40 oder 48 kHz
 | Klavier-Modell | selbst trainieren aus freien Aufnahmen | z. B. MAESTRO-Datensatz (CC BY-NC-SA, nur privat) oder eigene Aufnahmen |
 | Alternative ohne KI | Basic Pitch (Audio → MIDI) + Klavier-Soundfont | Echter Klavierklang, aber ohne Gesangsnuancen. Gut als „Noten-Modus“. |
 
-## Rechner
+## Technik (entschieden am 20.10.2026)
 
-- NVIDIA GeForce RTX 5070 Laptop (Blackwell, 8 GB) → PyTorch mit **CUDA 12.8 oder neuer** nötig
+**Tauri 2**: Rust-Kern + Web-Oberfläche + Python-Motor im Hintergrund.
+
+| Schicht | Wahl | Aufgabe |
+|---|---|---|
+| Programmrahmen | **Tauri 2** (Rust) | Fenster, Dateien, Installer; nutzt das in Windows 11 eingebaute WebView2 |
+| Oberfläche | **React + TypeScript** (Vite) | Musicfy-artige Bedienung, Wellenformen, Regler; schwarz-weiß im TUNAS-Design |
+| Rust-Kern | Tauri-Befehle | Audio aufnehmen/abspielen (`cpal`, `symphonia`), FFmpeg aufrufen, Python-Motor starten und überwachen, Verlauf und Einstellungen speichern |
+| KI-Motor | **Python 3.11 + PyTorch (CUDA 12.8+)** als eigener Prozess | Trennen, Hall/Rauschen, RVC-Umwandlung und -Training, später ACE-Step |
+| Verbindung | JSON-Zeilen über stdin/stdout | Aufträge, Fortschritt in Prozent, Ergebnisse, Fehler (wie FFmpeg beim Converter) |
+| Python-Umgebung | **uv** | Python und Pakete in einen eigenen Ordner der App, nichts systemweit |
+| Später | **ONNX Runtime in Rust** (`ort`, CUDA) | Trennen und RVC-Umwandlung ohne Python, damit der Kern ohne mehrere GB Python läuft; Training und ACE-Step bleiben in Python |
+
+Warum Tauri: Die KI läuft ohnehin auf der Grafikkarte. Tauri hält die App selbst klein (ca. 40–90 MB RAM,
+Installer ohne KI ca. 5–15 MB) und lässt mehr Grafikspeicher für die Modelle übrig als Electron.
+
+Geplanter Aufbau des Repos:
+
+```
+TunifyMusic/
+  app/            Tauri-2-App: src/ (React-Oberfläche), src-tauri/ (Rust-Kern)
+  engine/         Python-Motor (Paket tunify_engine, pyproject.toml für uv)
+  models/         Modelle, nicht im Repo
+  branding/  notizen/  KONZEPT.md  README.md  LICENSE
+```
+
+## Rechner und Werkzeuge
+
+- NVIDIA GeForce RTX 5070 Laptop (Blackwell, 8 GB), Treiber 595.97 → PyTorch mit **CUDA 12.8 oder neuer**
 - AMD Ryzen 7 260, 32 GB RAM
-- FFmpeg 9.0.2 vorhanden, **Python fehlt noch**
+- Vorhanden: FFmpeg 9.0.2, Node 24.20, npm 11.19, Git 2.55, WebView2 155
+- **Fehlt noch:** Rust (rustup), Visual Studio Build Tools (C++), Python 3.11 (über uv)
 
 ## Offene Entscheidungen
 
-1. **Programmrahmen**
-   - *WPF/.NET* wie der Converter, KI-Teil als gebündeltes Python im Hintergrund (Empfehlung:
-     passt zum Converter, Python nur als Rechenmotor)
-   - *Electron/React* wie der Cutter
+1. ~~**Programmrahmen**~~: entschieden am 20.10.2026 → **Tauri 2 + React + Python-Motor**, später ONNX in Rust
 2. **Motor**: Applio als fertiges Paket mitliefern oder eine schlanke eigene Python-Pipeline (rvc-python + audio-separator)?
 3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
 4. **Umfang der ersten Version**: nur „Stimme umwandeln“ (Empfehlung) oder gleich mit Training bzw. Lied erzeugen?
@@ -101,7 +126,7 @@ Info: Name, Typ (Stimme / Instrument), Abtastrate 40 oder 48 kHz
 | Phase | Inhalt |
 |---|---|
 | 0 | Informationen sammeln, Entscheidungen treffen (jetzt) |
-| 1 | Machbarkeit: Python + PyTorch (CUDA 12.8) + Applio/RVC einrichten, ein Lied per Kommandozeile umwandeln |
+| 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo |
 | 2 | Klavier-Modell trainieren und Qualität prüfen |
 | 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek |
 | 4 | „Stimme trainieren“ in der App |

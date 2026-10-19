@@ -10,7 +10,7 @@ Hintergrund, Bausteine und Fahrplan: [KONZEPT.md](KONZEPT.md) · Analyse des Vor
 
 ## Stand
 
-Phase 0: Informationen sammeln. Noch kein Programmcode.
+Phase 0: Informationen sammeln. Noch kein Programmcode. Technik: Tauri 2 (Rust) + React + Python-Motor.
 
 ## Lizenz
 
