@@ -92,6 +92,11 @@ body {
   border-left: 1px solid var(--line);
 }
 
+.theme-switch button:focus-visible {
+  outline-offset: -3px;
+  outline-color: var(--text);
+}
+
 .theme-switch button.active {
   background: var(--accent);
   color: var(--accent-text);
