@@ -1,7 +1,9 @@
-# Python
+# Python-Motor
 .venv/
 __pycache__/
 *.pyc
+engine/.python/
+engine/vendor/
 
 # Modelle und Audio (zu groß fürs Repo)
 models/
@@ -12,7 +14,5 @@ models/
 audio/
 ausgabe/
 
-# .NET
-bin/
-obj/
-.vs/
+# Rust / Tauri
+target/

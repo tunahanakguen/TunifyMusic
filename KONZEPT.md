@@ -1,6 +1,6 @@
 # Tunify Music – Konzept
 
-Autor: Tunahan A. · Stand: 20.10.2026 · Phase: **Informationen sammeln**
+Autor: Tunahan A. · Stand: 20.10.2026 · Phase: **1 erledigt, als Nächstes 2**
 
 ## Ziel
 
@@ -108,13 +108,13 @@ TunifyMusic/
 
 - NVIDIA GeForce RTX 5070 Laptop (Blackwell, 8 GB), Treiber 595.97 → PyTorch mit **CUDA 12.8 oder neuer**
 - AMD Ryzen 7 260, 32 GB RAM
-- Vorhanden: FFmpeg 9.0.2, Node 24.20, npm 11.19, Git 2.55, WebView2 155
-- **Fehlt noch:** Rust (rustup), Visual Studio Build Tools (C++), Python 3.11 (über uv)
+- Werkzeuge: FFmpeg 9.0.2, Node 24.20, Git 2.55, WebView2 155, Rust 1.99.1, VS Build Tools 2022 (C++), uv 0.13.1
+- Python 3.12.15 und alle Pakete liegen im Projekt (`engine/.python`, `engine/.venv`), PyTorch 2.11.0+cu128 erkennt die RTX 5070 (sm_120)
 
 ## Offene Entscheidungen
 
 1. ~~**Programmrahmen**~~: entschieden am 20.10.2026 → **Tauri 2 + React + Python-Motor**, später ONNX in Rust
-2. **Motor**: Applio als fertiges Paket mitliefern oder eine schlanke eigene Python-Pipeline (rvc-python + audio-separator)?
+2. ~~**Motor**~~: entschieden am 20.10.2026 → **Applio 3.7.0** (MIT, fest auf diese Version, in `engine/vendor`) für RVC-Umwandlung und -Training + **python-audio-separator 0.47.1** (BS-Roformer, UVR-DeEcho-DeReverb, UVR-DeNoise), angesteuert vom eigenen Paket `tunify_engine`
 3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
 4. **Umfang der ersten Version**: nur „Stimme umwandeln“ (Empfehlung) oder gleich mit Training bzw. Lied erzeugen?
 5. **Spuren trennen**: Die Trennung von Gesang und Begleitung braucht Tunify Music ohnehin. Soll es zusätzlich einen
@@ -125,10 +125,21 @@ TunifyMusic/
 
 | Phase | Inhalt |
 |---|---|
-| 0 | Informationen sammeln, Entscheidungen treffen (jetzt) |
-| 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo |
+| 0 | Informationen sammeln, Entscheidungen treffen ✓ |
+| 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo ✓ (20.10.2026) |
 | 2 | Klavier-Modell trainieren und Qualität prüfen |
 | 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek |
 | 4 | „Stimme trainieren“ in der App |
 | 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme |
 | 6 | Weitere Instrumente, Installer |
+
+## Erkenntnisse aus Phase 1 (20.10.2026)
+
+- Ganze Kette per Kommandozeile geprüft: Trennen → Hall/Echo → Rauschen → RVC (Pitch +3, Formant 1,2, Index)
+  → Begleitung dazumischen → MP3. 20 s Audio in ca. 55 s inklusive erstem Laden aller Modelle; ohne
+  Vorverarbeitung ca. 30 s. Die Modelle beim App-Start vorzuladen spart später den größten Teil.
+- RVC-Training läuft auf der RTX 5070: 1 min Audio, 5 Epochen, Batch 4 → ca. 3 min inklusive Index.
+- **Stille Spur bringt RVC zum Absturz** (CUDA device-side assert), z. B. wenn „Instrumental entfernen“ keinen
+  Gesang findet. Der Motor prüft das jetzt vorher und meldet „Keine Stimme gefunden“.
+- Die Trennmodelle benennen ihre Spuren `(Vocals)/(Instrumental)`, `(No Reverb)/(Reverb)`, `(No Noise)/(Noise)`.
+- Grundmodelle: RMVPE, FCPE, ContentVec (ca. 0,6 GB) und vortrainierte HiFi-GAN-Modelle fürs Training (ca. 1,3 GB).

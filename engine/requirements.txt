@@ -1,0 +1,10 @@
+﻿# Python-Motor von Tunify Music
+# Installation (aus dem Ordner engine/):
+#   uv venv --python 3.12 .venv
+#   uv pip install --python .venv -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu128 --index-strategy unsafe-best-match
+
+# RVC: Applio 3.7.0 (MIT), geklont nach vendor/applio (siehe tools/setup-engine.ps1, macht alles in einem Schritt)
+-r vendor/applio/requirements-engine.txt
+
+# Gesang abtrennen, Hall/Echo und Rauschen entfernen (UVR-Modelle)
+audio-separator==0.47.1

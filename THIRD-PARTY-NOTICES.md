@@ -1,0 +1,24 @@
+# Fremde Bausteine
+
+Tunify Music (GPL-3.0) verwendet diese freien Programme und Modelle. Sie liegen nicht im Repo, sondern werden
+von `tools/setup-engine.ps1` bzw. beim ersten Gebrauch geladen.
+
+| Baustein | Version | Lizenz | Quelle |
+|---|---|---|---|
+| Applio (RVC) | 3.7.0 | MIT | https://github.com/IAHispano/Applio |
+| python-audio-separator | 0.47.1 | MIT | https://github.com/nomadkaraoke/python-audio-separator |
+| PyTorch / torchaudio | 2.11.0 (CUDA 12.8) | BSD-3-Clause | https://pytorch.org |
+| Tauri | 2 | MIT / Apache-2.0 | https://tauri.app |
+| React | 19 | MIT | https://react.dev |
+| FFmpeg | 9.0.2 (systemweit installiert) | LGPL/GPL | https://ffmpeg.org |
+
+Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
+
+| Modell | Zweck | Herkunft |
+|---|---|---|
+| RMVPE, FCPE, ContentVec, HiFi-GAN-Pretrained | RVC-Tonhöhe, Merkmale, Training | Applio-Ressourcen auf Hugging Face (IAHispano/Applio) |
+| BS-Roformer (ep_317, viperx) | Gesang/Instrumental trennen | UVR-Modelle über audio-separator |
+| UVR-DeEcho-DeReverb, UVR-DeNoise (FoxJoy) | Hall/Echo und Rauschen entfernen | UVR-Modelle über audio-separator |
+
+Bei Applio gelten zusätzlich dessen Nutzungsbedingungen (`engine/vendor/applio/TERMS_OF_USE.md`):
+nur Audio verwenden, an dem man die Rechte hat.
