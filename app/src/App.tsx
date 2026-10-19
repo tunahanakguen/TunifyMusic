@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { ThemeChoice, useTheme } from "./theme";
 import "./App.css";
 
 type EngineInfo = {
@@ -11,6 +12,7 @@ type EngineInfo = {
 };
 
 const AREAS = [
+  { id: "start", label: "Start", phase: "" },
   { id: "convert", label: "Stimme umwandeln", phase: "Phase 3" },
   { id: "voices", label: "Stimmen", phase: "Phase 3" },
   { id: "train", label: "Stimme trainieren", phase: "Phase 4" },
@@ -44,7 +46,10 @@ function EngineStatus() {
   return (
     <section className="card">
       <div className="card-head">
-        <h2>KI-Motor</h2>
+        <h2>
+          <span className={`status-dot ${info ? "ok" : error ? "fail" : ""}`} />
+          KI-Motor
+        </h2>
         <button onClick={check} disabled={loading}>
           {loading ? "Prüfe …" : "Neu prüfen"}
         </button>
@@ -69,16 +74,48 @@ function EngineStatus() {
   );
 }
 
+const THEMES: { id: ThemeChoice; label: string }[] = [
+  { id: "light", label: "Hell" },
+  { id: "dark", label: "Dunkel" },
+  { id: "system", label: "Wie Windows" },
+];
+
+function ThemeSwitch() {
+  const { choice, setChoice } = useTheme();
+  return (
+    <div className="theme-switch" role="radiogroup" aria-label="Design">
+      {THEMES.map((t) => (
+        <button
+          key={t.id}
+          role="radio"
+          aria-checked={choice === t.id}
+          className={choice === t.id ? "active" : ""}
+          onClick={() => setChoice(t.id)}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <div className="shell">
       <header className="topbar">
-        <img src="/tunas-logo.png" alt="TUNAS" className="logo" />
-        <span className="brand">Tunify Music</span>
+        <img src="/tunify-logo.png" alt="TUNAS" className="logo" />
+        <span className="brand">
+          Tunify <em>Music</em>
+        </span>
+        <ThemeSwitch />
       </header>
       <nav className="sidebar">
         {AREAS.map((area) => (
-          <div key={area.id} className="nav-item disabled" title={`kommt in ${area.phase}`}>
+          <div
+            key={area.id}
+            className={`nav-item ${area.id === "start" ? "active" : "disabled"}`}
+            title={area.phase ? `kommt in ${area.phase}` : undefined}
+          >
             <span>{area.label}</span>
             <small>{area.phase}</small>
           </div>

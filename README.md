@@ -1,4 +1,4 @@
-<img src="branding/tunas-logo-1024.png" alt="TUNAS-Logo" width="96">
+<img src="branding/tunify-logo-1024.png" alt="TUNAS-Logo" width="96">
 
 # Tunify Music
 

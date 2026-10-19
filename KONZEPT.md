@@ -84,7 +84,7 @@ Info: Name, Typ (Stimme / Instrument), Abtastrate 40 oder 48 kHz
 | Schicht | Wahl | Aufgabe |
 |---|---|---|
 | Programmrahmen | **Tauri 2** (Rust) | Fenster, Dateien, Installer; nutzt das in Windows 11 eingebaute WebView2 |
-| Oberfläche | **React + TypeScript** (Vite) | Musicfy-artige Bedienung, Wellenformen, Regler; schwarz-weiß im TUNAS-Design |
+| Oberfläche | **React + TypeScript** (Vite) | Musicfy-artige Bedienung, Wellenformen, Regler; TUNAS-Design mit **Rot (#C8102E) als Erkennungsfarbe**, Design Hell (Standard), Dunkel oder „Wie Windows“ |
 | Rust-Kern | Tauri-Befehle | Audio aufnehmen/abspielen (`cpal`, `symphonia`), FFmpeg aufrufen, Python-Motor starten und überwachen, Verlauf und Einstellungen speichern |
 | KI-Motor | **Python 3.11 + PyTorch (CUDA 12.8+)** als eigener Prozess | Trennen, Hall/Rauschen, RVC-Umwandlung und -Training, später ACE-Step |
 | Verbindung | JSON-Zeilen über stdin/stdout | Aufträge, Fortschritt in Prozent, Ergebnisse, Fehler (wie FFmpeg beim Converter) |
