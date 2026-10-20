@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 engine/.python/
 engine/vendor/
+engine/.tools/
 
 # Modelle und Audio (zu groß fürs Repo)
 models/

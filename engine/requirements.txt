@@ -8,3 +8,6 @@
 
 # Gesang abtrennen, Hall/Echo und Rauschen entfernen (UVR-Modelle)
 audio-separator==0.47.1
+
+# MIDI schreiben (Trainingsdaten für Instrument-Modelle)
+mido==1.3.3

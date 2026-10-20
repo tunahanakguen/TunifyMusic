@@ -11,6 +11,8 @@ von `tools/setup-engine.ps1` bzw. beim ersten Gebrauch geladen.
 | Tauri | 2 | MIT / Apache-2.0 | https://tauri.app |
 | React | 19 | MIT | https://react.dev |
 | FFmpeg | 9.0.2 (systemweit installiert) | LGPL/GPL | https://ffmpeg.org |
+| FluidSynth | 2.6.1 (in `engine/.tools`) | LGPL-2.1 | https://github.com/FluidSynth/fluidsynth |
+| mido | 1.3.3 | MIT | https://github.com/mido/mido |
 
 Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
 
@@ -19,6 +21,7 @@ Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
 | RMVPE, FCPE, ContentVec, HiFi-GAN-Pretrained | RVC-Tonhöhe, Merkmale, Training | Applio-Ressourcen auf Hugging Face (IAHispano/Applio) |
 | BS-Roformer (ep_317, viperx) | Gesang/Instrumental trennen | UVR-Modelle über audio-separator |
 | UVR-DeEcho-DeReverb, UVR-DeNoise (FoxJoy) | Hall/Echo und Rauschen entfernen | UVR-Modelle über audio-separator |
+| **Salamander Grand Piano V3** (SF2 von FreePats, Yamaha C5) | Trainingsdaten fürs Klavier-Modell | Alexander Holm, **CC BY 3.0**, https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html |
 
 Bei Applio gelten zusätzlich dessen Nutzungsbedingungen (`engine/vendor/applio/TERMS_OF_USE.md`):
 nur Audio verwenden, an dem man die Rechte hat.
