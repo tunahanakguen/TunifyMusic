@@ -356,6 +356,109 @@ async fn train_voice(app: AppHandle, request: TrainRequest) -> Result<voices::Vo
     .map_err(|e| e.to_string())?
 }
 
+/// Einstellungen für „Lied erzeugen“ und „Instrumental erzeugen“ (ACE-Step).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SongRequest {
+    caption: String,
+    lyrics: String,
+    instrumental: bool,
+    duration: u32,
+    bpm: Option<u32>,
+    key: String,
+    language: String,
+    seed: Option<i64>,
+    /// Stimme aus der Bibliothek, in der gesungen wird (nur mit Gesang)
+    voice: Option<String>,
+    pitch: i32,
+    format: String,
+}
+
+/// Dateiname aus der Beschreibung: die ersten Wörter, ohne verbotene Zeichen
+fn song_title(caption: &str, instrumental: bool) -> String {
+    let words: Vec<&str> = caption
+        .split_whitespace()
+        .map(|w| w.trim_matches(|c: char| ",.;!?".contains(c)))
+        .filter(|w| !w.is_empty())
+        .take(5)
+        .collect();
+    let title = file_label(&words.join(" "));
+    match (title.is_empty(), instrumental) {
+        (true, true) => "Instrumental".into(),
+        (true, false) => "Lied".into(),
+        (false, _) => title,
+    }
+}
+
+/// Erzeugt ein Lied oder Instrumental. Fortschritt kommt als Ereignis `song-progress`.
+#[tauri::command]
+async fn generate_song(app: AppHandle, request: SongRequest) -> Result<serde_json::Value, String> {
+    if !FORMATS.contains(&request.format.as_str()) {
+        return Err(format!("Unbekanntes Format: {}", request.format));
+    }
+    let voice = match &request.voice {
+        Some(id) if !request.instrumental => Some(voices::get(&voices_dir(&app)?, id)?),
+        _ => None,
+    };
+    let kind = match (&voice, request.instrumental) {
+        (_, true) => "Instrumental".to_string(),
+        (Some(v), false) => file_label(&v.name),
+        (None, false) => "Lied".to_string(),
+    };
+    let out = unique_output(&output_dir(&app)?, &song_title(&request.caption, request.instrumental), &kind, &request.format);
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = out.to_string_lossy().to_string();
+        let duration = request.duration.to_string();
+        let bpm = request.bpm.map(|b| b.to_string());
+        let seed = request.seed.unwrap_or(-1).to_string();
+        let pitch = request.pitch.to_string();
+        let mut args = vec![
+            "song",
+            "--caption",
+            request.caption.as_str(),
+            "--lyrics",
+            request.lyrics.as_str(),
+            "--duration",
+            duration.as_str(),
+            "--key",
+            request.key.as_str(),
+            "--language",
+            request.language.as_str(),
+            "--seed",
+            seed.as_str(),
+            "--out",
+            out.as_str(),
+        ];
+        if request.instrumental {
+            args.push("--instrumental");
+        }
+        if let Some(bpm) = &bpm {
+            args.extend(["--bpm", bpm.as_str()]);
+        }
+        if let Some(voice) = &voice {
+            args.extend(["--voice-model", voice.model.as_str(), "--pitch", pitch.as_str()]);
+            if let Some(index) = &voice.index {
+                args.extend(["--voice-index", index.as_str()]);
+            }
+        }
+        let events = engine::run_job(&args, |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("song-progress", event);
+            }
+        })?;
+        let mut result = events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())?;
+        if let Some(voice) = voice {
+            result["voice"] = voice.name.into();
+        }
+        Ok(result)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Bricht die laufende Umwandlung ab.
 #[tauri::command]
 fn cancel_conversion() -> bool {
@@ -428,6 +531,14 @@ mod tests {
     }
 
     #[test]
+    fn liedtitel_aus_beschreibung() {
+        assert_eq!(song_title("Lofi hip hop beat, mellow piano, soft drums", true), "Lofi hip hop beat mellow");
+        assert_eq!(song_title("Rock: laut/schnell", false), "Rock_ laut_schnell");
+        assert_eq!(song_title("   ", true), "Instrumental");
+        assert_eq!(song_title("", false), "Lied");
+    }
+
+    #[test]
     fn aufnahme_wird_zu_wav() {
         let dir = std::env::temp_dir().join(format!("tunify-webm-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -469,6 +580,7 @@ pub fn run() {
             delete_voice,
             convert_voice,
             train_voice,
+            generate_song,
             cancel_conversion,
             list_history,
             output_folder

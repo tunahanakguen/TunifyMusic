@@ -12,11 +12,14 @@ import sys
 # Bibliotheken schreiben gern selbst auf stdout. Damit die App nur saubere JSON-Zeilen
 # bekommt, gehen unsere Ereignisse über einen eigenen Kanal und alles andere nach stderr.
 _out = sys.stdout
+# Unter Windows ist eine umgeleitete Ausgabe cp1252: Zeichen wie „♭“ würden sonst abstürzen
+sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 sys.stdout = sys.stderr
 
 
 def emit(event: str, **data) -> None:
-    _out.write(json.dumps({"event": event, **data}, ensure_ascii=False) + "\n")
+    # Nur ASCII (Umlaute als \u-Escapes): unabhängig von der Codepage der Pipe
+    _out.write(json.dumps({"event": event, **data}) + "\n")
     _out.flush()
 
 

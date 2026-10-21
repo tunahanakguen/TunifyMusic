@@ -132,7 +132,7 @@ TunifyMusic/
 | 2 | Klavier-Modell trainieren und Qualität prüfen ✓ (21.10.2026) → Ergebnis: Klavier über den **Noten-Modus**, RVC nur für Stimme → Stimme |
 | 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek ✓ (21.10.2026): Instrument (Noten-Modus, 18 Instrumente) und Stimme (RVC), Mikrofon-Aufnahme, WAV/MP3/FLAC, MIDI, Abbrechen, Verlauf, Stimmen-Bibliothek mit Import (.pth/.index/.zip) |
 | 4 | „Stimme trainieren“ in der App ✓ (21.10.2026): Aufnahmen hinzufügen/aufnehmen, Vorverarbeitung, Schnell/Standard/Gründlich (100/200/400 Epochen, 40 kHz), Fortschritt je Epoche mit Restzeit, Abbrechen, Ergebnis direkt in der Bibliothek; 1,4 min Gesang × 100 Epochen ≈ 11 min |
-| 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme |
+| 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme — Motor und Seiten fertig (21.10.2026), Test in der App offen. ACE-Step 1.5 v0.1.8 in eigener Umgebung (PyTorch 2.7.1), Turbo-DiT + Sprachmodell 0.6B (8-GB-Stufe, INT8, Auslagern), eigener Arbeitsprozess hält die Modelle. Gemessen: Laden 70–90 s beim ersten Mal, 30 s Musik in ca. 55 s; „in eigener Stimme“: Gesang trennen → RVC → mischen |
 | 6 | Weitere Instrumente, Installer |
 
 ## Erkenntnisse aus Phase 1 (20.10.2026)

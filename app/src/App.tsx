@@ -5,6 +5,7 @@ import ConvertPage from "./ConvertPage";
 import HistoryPage from "./HistoryPage";
 import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
+import SongPage from "./SongPage";
 import "./App.css";
 
 type EngineInfo = {
@@ -20,8 +21,8 @@ const AREAS = [
   { id: "convert", label: "Stimme umwandeln", phase: "" },
   { id: "voices", label: "Stimmen", phase: "" },
   { id: "train", label: "Stimme trainieren", phase: "" },
-  { id: "song", label: "Lied erzeugen", phase: "Phase 5" },
-  { id: "instrumental", label: "Instrumental erzeugen", phase: "Phase 5" },
+  { id: "song", label: "Lied erzeugen", phase: "" },
+  { id: "instrumental", label: "Instrumental erzeugen", phase: "" },
   { id: "history", label: "Verlauf", phase: "" },
 ];
 
@@ -170,7 +171,9 @@ export default function App() {
             <EngineStatus />
           </>
         ) : null}
-        {/* immer da, nur versteckt: ein Training läuft weiter, während man andere Seiten nutzt */}
+        {/* immer da, nur versteckt: Training und Lieder laufen weiter, während man andere Seiten nutzt */}
+        <SongPage instrumental={false} active={area === "song"} />
+        <SongPage instrumental active={area === "instrumental"} />
         <TrainPage
           active={area === "train"}
           onUse={(voice) => {
