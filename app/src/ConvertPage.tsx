@@ -5,24 +5,26 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 
+import Recorder from "./Recorder";
+
 type Progress = { step: string; percent: number; message: string };
-type Result = { output: string; notes: number };
+type Result = { output: string; notes: number; instrument: string; octave: number };
+type Instrument = { id: string; label: string; available: boolean };
 
 const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus", "webm", "mp4"];
-
-const INSTRUMENTS = [
-  { id: "klavier", label: "Klavier", ready: true },
-  { id: "gitarre", label: "Gitarre", ready: false },
-  { id: "geige", label: "Geige", ready: false },
-  { id: "floete", label: "Flöte", ready: false },
-];
 
 function fileName(path: string) {
   return path.split(/[\\/]/).pop() ?? path;
 }
 
+function isRecording(path: string) {
+  return /[\\/]Tunify Music[\\/]Aufnahmen[\\/]/.test(path);
+}
+
 export default function ConvertPage() {
   const [input, setInput] = useState<string | null>(null);
+  const [instruments, setInstruments] = useState<Instrument[]>([{ id: "klavier", label: "Klavier", available: true }]);
+  const [instrument, setInstrument] = useState("klavier");
   const [transpose, setTranspose] = useState(0);
   const [isolateVocals, setIsolateVocals] = useState(false);
   const [dereverb, setDereverb] = useState(false);
@@ -33,6 +35,12 @@ export default function ConvertPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  useEffect(() => {
+    invoke<Instrument[]>("list_instruments")
+      .then(setInstruments)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let unlistenProgress: (() => void) | undefined;
@@ -89,6 +97,8 @@ export default function ConvertPage() {
         await invoke<Result>("convert_instrument", {
           request: {
             input,
+            instrument,
+            label: instruments.find((i) => i.id === instrument)?.label ?? instrument,
             transpose,
             isolateVocals,
             dereverb,
@@ -112,35 +122,39 @@ export default function ConvertPage() {
 
       <section className="card wide">
         <h2>1 · Aufnahme</h2>
-        <button className={`dropzone ${dragging ? "over" : ""}`} onClick={pick} disabled={busy}>
-          {input ? (
-            <>
-              <strong>{fileName(input)}</strong>
-              <span className="muted">Andere Datei wählen oder hierher ziehen</span>
-            </>
-          ) : (
-            <>
-              <strong>Audiodatei wählen</strong>
-              <span className="muted">oder hierher ziehen · MP3, WAV, M4A, FLAC …</span>
-            </>
-          )}
-        </button>
+        <div className="input-row">
+          <button className={`dropzone ${dragging ? "over" : ""}`} onClick={pick} disabled={busy}>
+            {input ? (
+              <>
+                <strong>{fileName(input)}</strong>
+                <span className="muted">Andere Datei wählen oder hierher ziehen</span>
+              </>
+            ) : (
+              <>
+                <strong>Audiodatei wählen</strong>
+                <span className="muted">oder hierher ziehen · MP3, WAV, M4A, FLAC …</span>
+              </>
+            )}
+          </button>
+          <Recorder disabled={busy} onRecorded={choose} onError={setError} />
+        </div>
+        {input && isRecording(input) && <audio className="preview" controls src={convertFileSrc(input)} />}
       </section>
 
       <section className="card wide">
         <h2>2 · Klang</h2>
         <div className="choices" role="radiogroup" aria-label="Instrument">
-          {INSTRUMENTS.map((i) => (
+          {instruments.map((i) => (
             <button
               key={i.id}
               role="radio"
-              aria-checked={i.id === "klavier"}
-              className={`choice ${i.id === "klavier" ? "active" : ""}`}
-              disabled={!i.ready}
-              title={i.ready ? undefined : "kommt später"}
+              aria-checked={i.id === instrument}
+              className={`choice ${i.id === instrument ? "active" : ""}`}
+              disabled={!i.available || busy}
+              title={i.available ? undefined : "Klangsatz fehlt – tools\\setup-instruments.ps1 ausführen"}
+              onClick={() => setInstrument(i.id)}
             >
               {i.label}
-              {!i.ready && <small>bald</small>}
             </button>
           ))}
         </div>
@@ -148,6 +162,7 @@ export default function ConvertPage() {
         <div className="field">
           <label htmlFor="transpose">
             Tonlage <strong>{transpose > 0 ? `+${transpose}` : transpose}</strong> Halbtöne
+            <span className="muted"> · zusätzlich legt Tunify die Melodie automatisch in die Lage des Instruments</span>
           </label>
           <div className="range-row">
             <button className="ghost" onClick={() => setTranspose(Math.max(-24, transpose - 12))} disabled={busy}>
@@ -212,7 +227,13 @@ export default function ConvertPage() {
         {result && (
           <div className="result" ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "end" })}>
             <p>
-              <strong>{fileName(result.output)}</strong> <span className="muted">· {result.notes} Töne erkannt</span>
+              <strong>{fileName(result.output)}</strong> <span className="muted">
+                · {result.notes} Töne erkannt
+                {result.octave !== 0 &&
+                  ` · automatisch ${Math.abs(result.octave)} Oktave${Math.abs(result.octave) > 1 ? "n" : ""} ${
+                    result.octave > 0 ? "höher" : "tiefer"
+                  } (Lage ${result.instrument})`}
+              </span>
             </p>
             <audio controls src={convertFileSrc(result.output)} />
             <button className="ghost" onClick={() => revealItemInDir(result.output)}>

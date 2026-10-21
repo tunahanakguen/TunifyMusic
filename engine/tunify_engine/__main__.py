@@ -35,8 +35,12 @@ def main() -> None:
     conv.add_argument("--mix-instrumental", action="store_true",
                       help="Begleitung wieder dazumischen (Cover); nur mit --isolate-vocals")
 
-    notes = sub.add_parser("notes", help="Noten-Modus: Melodie erkennen und mit echtem Klavier nachspielen")
+    sub.add_parser("instruments", help="Instrumente des Noten-Modus auflisten")
+    notes = sub.add_parser("notes", help="Noten-Modus: Melodie erkennen und mit echtem Instrument nachspielen")
     notes.add_argument("input", help="Eingabedatei (MP3, WAV, …)")
+    notes.add_argument("--instrument", default="klavier", help="z. B. klavier, geige, floete (siehe instruments)")
+    notes.add_argument("--no-fit-range", dest="fit_range", action="store_false",
+                       help="nicht automatisch in die Lage des Instruments oktavieren")
     notes.add_argument("--out", required=True, help="Ausgabedatei (.wav, .mp3, .flac)")
     notes.add_argument("--midi", default="", help="erkannte Melodie zusätzlich als .mid speichern")
     notes.add_argument("--transpose", type=int, default=0, help="Halbtöne, -24 … 24")
@@ -59,6 +63,9 @@ def main() -> None:
         elif args.command == "convert":
             from .convert import convert
             convert(args)
+        elif args.command == "instruments":
+            from .notes import list_instruments
+            list_instruments()
         elif args.command == "notes":
             from .notes import notes_mode
             notes_mode(args)

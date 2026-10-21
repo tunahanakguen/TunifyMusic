@@ -1,17 +1,19 @@
-"""Noten-Modus: gesungene Melodie erkennen und mit echtem Klavier nachspielen.
+"""Noten-Modus: gesungene Melodie erkennen und mit einem echten Instrument nachspielen.
 
 Datei → [Instrumental entfernen] → [Hall/Echo entfernen] → [Rauschen reduzieren]
-      → Tonhöhe (RMVPE) → Noten (Tonhöhe, Anschlag, Länge) → MIDI → Salamander-Klavier (FluidSynth)
+      → Tonhöhe (RMVPE) → Noten (Tonhöhe, Anschlag, Länge) → MIDI → Klangsatz (FluidSynth)
       → [Begleitung wieder dazumischen] → Ausgabe
 
-Anders als RVC erzeugt das hier keinen neuen Klang, sondern spielt echte Klavier-Samples:
-klingt sicher nach Klavier, verliert aber Gleittöne und Vibrato der Stimme.
+Anders als RVC erzeugt das hier keinen neuen Klang, sondern spielt echte Instrumenten-Samples:
+klingt sicher nach dem Instrument, verliert aber Gleittöne und Vibrato der Stimme.
+Klavier kommt aus Salamander Grand Piano, alle anderen Instrumente aus GeneralUser GS.
 """
 
 import shutil
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import NamedTuple
 
 from . import protocol
 from .convert import (APPLIO_DIR, DENOISE_MODEL, DEREVERB_MODEL, ENGINE_DIR, SILENCE_DB, VOCALS_MODEL,
@@ -21,6 +23,37 @@ REPO_DIR = ENGINE_DIR.parent
 FLUIDSYNTH = ENGINE_DIR / ".tools" / "fluidsynth" / "fluidsynth-v2.6.1-win10-x64-cpp11" / "bin" / "fluidsynth.exe"
 PIANO_SF2 = (REPO_DIR / "models" / "instruments" / "salamander" / "SalamanderGrandPiano-SF2-V3+20200602"
              / "SalamanderGrandPiano-V3+20200602.sf2")
+GM_SF2 = REPO_DIR / "models" / "instruments" / "generaluser" / "GeneralUser-GS.sf2"
+
+
+class Instrument(NamedTuple):
+    label: str
+    sf2: Path
+    program: int                       # General-MIDI-Programm (0-basiert)
+    sustains: bool                     # hält den Ton → Lautstärke folgt der Stimme
+    range: tuple[int, int] | None      # spielbarer Bereich (MIDI); None = passt immer
+
+
+INSTRUMENTS: dict[str, Instrument] = {
+    "klavier": Instrument("Klavier", PIANO_SF2, 0, False, None),
+    "e-piano": Instrument("E-Piano", GM_SF2, 4, False, None),
+    "orgel": Instrument("Orgel", GM_SF2, 16, True, None),
+    "akustikgitarre": Instrument("Akustikgitarre", GM_SF2, 24, False, (40, 84)),
+    "e-gitarre": Instrument("E-Gitarre", GM_SF2, 27, False, (40, 86)),
+    "bass": Instrument("Bass", GM_SF2, 33, False, (28, 55)),
+    "harfe": Instrument("Harfe", GM_SF2, 46, False, None),
+    "marimba": Instrument("Marimba", GM_SF2, 12, False, (45, 96)),
+    "geige": Instrument("Geige", GM_SF2, 40, True, (55, 93)),
+    "cello": Instrument("Cello", GM_SF2, 42, True, (36, 69)),
+    "streicher": Instrument("Streicher", GM_SF2, 48, True, None),
+    "chor": Instrument("Chor", GM_SF2, 52, True, (48, 79)),
+    "trompete": Instrument("Trompete", GM_SF2, 56, True, (52, 82)),
+    "saxophon": Instrument("Saxophon", GM_SF2, 65, True, (49, 80)),
+    "klarinette": Instrument("Klarinette", GM_SF2, 71, True, (50, 89)),
+    "floete": Instrument("Flöte", GM_SF2, 73, True, (60, 96)),
+    "panfloete": Instrument("Panflöte", GM_SF2, 75, True, (60, 96)),
+    "synth": Instrument("Synth", GM_SF2, 81, True, None),
+}
 
 FRAME_S = 0.01         # RMVPE liefert 100 Tonhöhen pro Sekunde
 MIN_NOTE_S = 0.12      # kürzere Schnipsel gehören zur Nachbarnote
@@ -186,8 +219,25 @@ def _snap(pitch: float, scale: set[int]) -> float:
     return min(candidates, key=lambda n: (abs(n - pitch), n != round(pitch)))
 
 
-def _write_midi(notes, transpose: int, path: Path) -> None:
+def fit_octave(notes, instrument: Instrument) -> int:
+    """Um ganze Oktaven verschieben, bis die Melodie bequem im Bereich des Instruments liegt."""
+    import numpy as np
+
+    if instrument.range is None or not notes:
+        return 0
+    lo, hi = instrument.range
+    median = float(np.median([pitch for _, _, pitch, _ in notes]))
+    shifts = sorted(range(-3, 4), key=abs)
+    for k in shifts:
+        if lo + 5 <= median + 12 * k <= hi - 7:
+            return 12 * k
+    return 12 * min(shifts, key=lambda k: abs(median + 12 * k - (lo + hi) / 2))
+
+
+def _write_midi(notes, transpose: int, path: Path, instrument: Instrument, db=None) -> None:
+    """Schreibt die Noten als MIDI. Bei haltenden Instrumenten folgt die Lautstärke (CC 11) der Stimme."""
     import mido
+    import numpy as np
 
     tpb, tempo = 480, 500000  # 120 BPM: 1 s = 960 Ticks
     ticks = lambda seconds: round(seconds * tpb * 1_000_000 / tempo)  # noqa: E731
@@ -195,33 +245,57 @@ def _write_midi(notes, transpose: int, path: Path) -> None:
     track = mido.MidiTrack()
     mid.tracks.append(track)
     track.append(mido.MetaMessage("set_tempo", tempo=tempo))
+    track.append(mido.Message("program_change", program=instrument.program, time=0))
+
+    # (Tick, Reihenfolge, Nachricht): bei gleichem Tick erst Note aus, dann Lautstärke, dann Note an
     events = []
     for start, end, pitch, velocity in notes:
         note = min(108, max(21, pitch + transpose))
-        events.append((ticks(start), 1, note, velocity))
-        events.append((ticks(end), 0, note, 0))
+        events.append((ticks(start), 2, mido.Message("note_on", note=note, velocity=velocity)))
+        events.append((ticks(end), 0, mido.Message("note_off", note=note, velocity=0)))
+        if instrument.sustains and db is not None:
+            a, b = round(start / FRAME_S), round(end / FRAME_S)
+            peak = float(db[a:b].max())
+            for frame in range(a, b, 3):  # alle 30 ms
+                value = int(np.clip(127 + (db[frame] - peak) * 87 / 24, 30, 127))
+                events.append((ticks(frame * FRAME_S), 1, mido.Message("control_change", control=11, value=value)))
     now = 0
-    for tick, on, note, velocity in sorted(events):
-        kind = "note_on" if on else "note_off"
-        track.append(mido.Message(kind, note=note, velocity=velocity, time=tick - now))
+    for tick, _, message in sorted(events, key=lambda e: (e[0], e[1])):
+        track.append(message.copy(time=tick - now))
         now = tick
     mid.save(str(path))
 
 
-def _render(midi_path: Path, target: Path) -> None:
-    if not FLUIDSYNTH.exists() or not PIANO_SF2.exists():
-        raise FileNotFoundError("Klavier fehlt – bitte tools\\setup-piano.ps1 ausführen")
+def _render(midi_path: Path, target: Path, instrument: Instrument) -> None:
+    if not FLUIDSYNTH.exists() or not instrument.sf2.exists():
+        raise FileNotFoundError(
+            f"Klangsatz für {instrument.label} fehlt – bitte tools/setup-instruments.ps1 ausführen")
     subprocess.run(
         [str(FLUIDSYNTH), "-ni", "-q", "-g", "1.0", "-r", "48000",
          "-o", "synth.reverb.active=0", "-o", "synth.chorus.active=0",
-         "-F", str(target), str(PIANO_SF2), str(midi_path)],
+         "-F", str(target), str(instrument.sf2), str(midi_path)],
         check=True, stdout=subprocess.DEVNULL,
     )
+    _normalize(target)
+
+
+def _normalize(wav: Path, peak_db: float = -1.0) -> None:
+    """Klangsätze sind unterschiedlich laut: Spitze auf −1 dB bringen."""
+    import numpy as np
+    import soundfile as sf
+
+    audio, sr = sf.read(str(wav), dtype="float32")
+    peak = float(np.max(np.abs(audio))) if audio.size else 0.0
+    if peak > 0:
+        sf.write(str(wav), audio * (10 ** (peak_db / 20) / peak), sr)
 
 
 def notes_mode(args) -> None:
     source = Path(args.input).resolve()
     out = Path(args.out).resolve()
+    instrument = INSTRUMENTS.get(args.instrument)
+    if instrument is None:
+        raise ValueError(f"Unbekanntes Instrument: {args.instrument}")
     if not source.exists():
         raise FileNotFoundError(f"Eingabe fehlt: {source}")
     if args.mix_instrumental and not args.isolate_vocals:
@@ -255,14 +329,15 @@ def notes_mode(args) -> None:
         if not notes:
             raise ValueError("Keine Töne erkannt. Ist in der Aufnahme Gesang?")
 
-        protocol.progress("render", 80, f"{len(notes)} Töne auf dem Klavier spielen")
+        octave = fit_octave(notes, instrument) if args.fit_range else 0
+        protocol.progress("render", 80, f"{len(notes)} Töne auf {instrument.label} spielen")
         midi_path = work / "melodie.mid"
-        _write_midi(notes, args.transpose, midi_path)
+        _write_midi(notes, octave + args.transpose, midi_path, instrument, db)
         if args.midi:
             Path(args.midi).resolve().parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(midi_path, Path(args.midi).resolve())
-        rendered = work / "klavier.wav"
-        _render(midi_path, rendered)
+        rendered = work / "instrument.wav"
+        _render(midi_path, rendered, instrument)
 
         if args.mix_instrumental and instrumental is not None:
             protocol.progress("mix", 90, "Begleitung dazumischen")
@@ -277,4 +352,10 @@ def notes_mode(args) -> None:
             subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(rendered), str(out)], check=True)
 
     protocol.progress("done", 100, "Fertig")
-    protocol.emit("result", output=str(out), notes=len(notes))
+    protocol.emit("result", output=str(out), notes=len(notes), instrument=instrument.label, octave=octave // 12)
+
+
+def list_instruments() -> None:
+    protocol.emit("result", instruments=[
+        {"id": key, "label": i.label, "available": i.sf2.exists()} for key, i in INSTRUMENTS.items()
+    ])

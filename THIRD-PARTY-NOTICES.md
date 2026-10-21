@@ -21,7 +21,8 @@ Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
 | RMVPE, FCPE, ContentVec, HiFi-GAN-Pretrained | RVC-Tonhöhe, Merkmale, Training | Applio-Ressourcen auf Hugging Face (IAHispano/Applio) |
 | BS-Roformer (ep_317, viperx) | Gesang/Instrumental trennen | UVR-Modelle über audio-separator |
 | UVR-DeEcho-DeReverb, UVR-DeNoise (FoxJoy) | Hall/Echo und Rauschen entfernen | UVR-Modelle über audio-separator |
-| **Salamander Grand Piano V3** (SF2 von FreePats, Yamaha C5) | Trainingsdaten fürs Klavier-Modell | Alexander Holm, **CC BY 3.0**, https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html |
+| **Salamander Grand Piano V3** (SF2 von FreePats, Yamaha C5) | Klavier im Noten-Modus | Alexander Holm, **CC BY 3.0**, https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html |
+| **GeneralUser GS v2.0.3** (SF2, 261 Instrumente) | alle weiteren Instrumente im Noten-Modus | S. Christian Collins, eigene freie Lizenz (Nutzung ohne Einschränkung, auch in Software), https://www.schristiancollins.com/generaluser |
 
 Bei Applio gelten zusätzlich dessen Nutzungsbedingungen (`engine/vendor/applio/TERMS_OF_USE.md`):
 nur Audio verwenden, an dem man die Rechte hat.

@@ -389,3 +389,80 @@ button.ghost {
 .content > button {
   margin-top: 16px;
 }
+
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 12px;
+}
+
+.recorder {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.recorder.on {
+  border-color: var(--accent);
+}
+
+.recorder .muted {
+  font-size: 12px;
+}
+
+button.record {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+button.record .icon {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+button.record.stop .icon {
+  border-radius: 2px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.level {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.level > div {
+  height: 100%;
+  background: #1f9d55;
+}
+
+.level.clip > div {
+  background: var(--accent);
+}
+
+audio.preview {
+  width: 100%;
+  margin-top: 12px;
+}
+
+@media (max-width: 1000px) {
+  .input-row {
+    grid-template-columns: 1fr;
+  }
+}

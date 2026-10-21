@@ -1,7 +1,8 @@
-# Lädt die Bausteine für Trainingsdaten des Klavier-Modells (Phase 2).
+# Lädt die Klangsätze für den Noten-Modus (Gesang → Instrument) und FluidSynth.
 #  - Salamander Grand Piano V3 (SF2, Yamaha C5, CC BY 3.0) von FreePats  → models/instruments/salamander
+#  - GeneralUser GS v2.0.3 (SF2, 261 Instrumente, freie Lizenz) von GitHub → models/instruments/generaluser
 #  - FluidSynth 2.6.1 (LGPL) von GitHub                                  → engine/.tools/fluidsynth
-# Aufruf aus dem Repo-Ordner:  powershell -ExecutionPolicy Bypass -File tools\setup-piano.ps1
+# Aufruf aus dem Repo-Ordner:  powershell -ExecutionPolicy Bypass -File tools\setup-instruments.ps1
 
 $ErrorActionPreference = 'Stop'
 $root = Join-Path $PSScriptRoot '..' | Resolve-Path
@@ -16,6 +17,17 @@ if (-not (Test-Path $sf)) {
     Remove-Item $archive
 }
 
+# GeneralUser GS, fest auf den Stand von v2.0.3 (22.02.2026)
+$guDir = Join-Path $root 'models\instruments\generaluser'
+$gu = Join-Path $guDir 'GeneralUser-GS.sf2'
+if (-not (Test-Path $gu)) {
+    New-Item -ItemType Directory -Force $guDir | Out-Null
+    $base = 'https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/684543d5e5efaef08d02be50dcda8d552478fa60'
+    foreach ($f in 'GeneralUser-GS.sf2', 'documentation/LICENSE.txt') {
+        curl.exe -sSL -o (Join-Path $guDir (Split-Path $f -Leaf)) "$base/$f"
+    }
+}
+
 $fsDir = Join-Path $root 'engine\.tools\fluidsynth'
 $fs = Join-Path $fsDir 'fluidsynth-v2.6.1-win10-x64-cpp11\bin\fluidsynth.exe'
 if (-not (Test-Path $fs)) {
@@ -28,3 +40,4 @@ if (-not (Test-Path $fs)) {
 
 & $fs --version | Select-Object -First 1
 "Klavier: $sf"
+"Weitere Instrumente: $gu"
