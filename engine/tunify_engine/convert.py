@@ -82,7 +82,10 @@ def _to_wav(source: Path, target: Path) -> None:
 def _mix(vocals: Path, instrumental: Path, target: Path) -> None:
     proc.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(vocals), "-i", str(instrumental),
-         "-filter_complex", "amix=inputs=2:duration=longest:normalize=0", str(target)],
+         # amix übernähme sonst das Format des RVC-Gesangs (mono, 40 kHz) für die ganze Mischung
+         "-filter_complex",
+         "[0]aresample=48000,aformat=channel_layouts=stereo[v];[1]aresample=48000,aformat=channel_layouts=stereo[i];"
+         "[v][i]amix=inputs=2:duration=longest:normalize=0", str(target)],
         check=True,
     )
 

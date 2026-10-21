@@ -101,7 +101,21 @@ def generate(dit, lm, job: dict) -> dict:
         duration=float(job.get("duration") or -1),
         seed=int(job.get("seed", -1)),
     )
-    config = GenerationConfig(batch_size=1, use_random_seed=int(job.get("seed", -1)) < 0, audio_format="wav")
+    seed = int(job.get("seed", -1))
+    # generate_music wertet nur config.seeds aus, params.seed allein wird ignoriert
+    config = GenerationConfig(batch_size=1, use_random_seed=seed < 0, seeds=[seed] if seed >= 0 else None,
+                              audio_format="wav")
+    if seed >= 0:
+        # Das Sprachmodell (Tempo, Tonart, Aufbau) setzt bei einem einzelnen Lied selbst keine Zufallszahl
+        import random
+
+        import numpy as np
+        import torch
+
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
 
     started = time.time()
 
