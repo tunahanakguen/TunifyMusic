@@ -35,6 +35,19 @@ def main() -> None:
     conv.add_argument("--mix-instrumental", action="store_true",
                       help="Begleitung wieder dazumischen (Cover); nur mit --isolate-vocals")
 
+    notes = sub.add_parser("notes", help="Noten-Modus: Melodie erkennen und mit echtem Klavier nachspielen")
+    notes.add_argument("input", help="Eingabedatei (MP3, WAV, …)")
+    notes.add_argument("--out", required=True, help="Ausgabedatei (.wav, .mp3, .flac)")
+    notes.add_argument("--midi", default="", help="erkannte Melodie zusätzlich als .mid speichern")
+    notes.add_argument("--transpose", type=int, default=0, help="Halbtöne, -24 … 24")
+    notes.add_argument("--chromatic", action="store_true",
+                       help="Töne nicht auf die erkannte Tonart ziehen (für Melodien mit vielen Halbtönen)")
+    notes.add_argument("--isolate-vocals", action="store_true", help="Instrumental entfernen")
+    notes.add_argument("--dereverb", action="store_true", help="Hall/Echo entfernen")
+    notes.add_argument("--denoise", action="store_true", help="Rauschen reduzieren")
+    notes.add_argument("--mix-instrumental", action="store_true",
+                       help="Begleitung wieder dazumischen; nur mit --isolate-vocals")
+
     args = parser.parse_args()
     try:
         if args.command == "info":
@@ -46,6 +59,9 @@ def main() -> None:
         elif args.command == "convert":
             from .convert import convert
             convert(args)
+        elif args.command == "notes":
+            from .notes import notes_mode
+            notes_mode(args)
     except Exception as error:  # noqa: BLE001 – jeder Fehler geht als JSON an die App
         traceback.print_exc()
         protocol.emit("error", message=str(error))
