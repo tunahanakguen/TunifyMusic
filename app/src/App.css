@@ -118,17 +118,27 @@ body {
   padding: 10px 12px;
   border-radius: 6px;
   border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-weight: 400;
+  text-align: left;
 }
 
-.nav-item.active {
+.nav-item:hover:not(:disabled) {
+  background: var(--panel);
+  filter: none;
+}
+
+.nav-item.active,
+.nav-item.active:hover {
   background: var(--accent-soft);
   border-left-color: var(--accent);
   font-weight: 600;
 }
 
-.nav-item.disabled {
+.nav-item:disabled {
   color: var(--muted);
-  cursor: default;
+  opacity: 1;
 }
 
 .nav-item small {
@@ -232,4 +242,150 @@ button:focus-visible {
 button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Stimme umwandeln */
+.card.wide {
+  max-width: 720px;
+}
+
+.card h2 + * {
+  margin-top: 14px;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 28px 16px;
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 400;
+  cursor: pointer;
+  text-align: center;
+}
+
+.dropzone:hover:not(:disabled) {
+  filter: none;
+}
+
+.dropzone:hover,
+.dropzone.over {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.choice.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.choice small {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  font-weight: 500;
+}
+
+.field {
+  margin-top: 20px;
+}
+
+.range-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.range-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.toggles {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.toggles label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggles label.off {
+  color: var(--muted);
+}
+
+.toggles input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+.progress {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.bar > div {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+
+.result {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  margin-top: 14px;
+}
+
+.result p {
+  margin: 0;
+}
+
+.result audio {
+  width: 100%;
+}
+
+.content > button {
+  margin-top: 16px;
 }

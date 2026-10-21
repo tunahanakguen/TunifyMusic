@@ -127,7 +127,7 @@ TunifyMusic/
 |---|---|
 | 0 | Informationen sammeln, Entscheidungen treffen ✓ |
 | 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo ✓ (20.10.2026) |
-| 2 | Klavier-Modell trainieren und Qualität prüfen |
+| 2 | Klavier-Modell trainieren und Qualität prüfen ✓ (21.10.2026) → Ergebnis: Klavier über den **Noten-Modus**, RVC nur für Stimme → Stimme |
 | 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek |
 | 4 | „Stimme trainieren“ in der App |
 | 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme |
@@ -143,3 +143,18 @@ TunifyMusic/
   Gesang findet. Der Motor prüft das jetzt vorher und meldet „Keine Stimme gefunden“.
 - Die Trennmodelle benennen ihre Spuren `(Vocals)/(Instrumental)`, `(No Reverb)/(Reverb)`, `(No Noise)/(Noise)`.
 - Grundmodelle: RMVPE, FCPE, ContentVec (ca. 0,6 GB) und vortrainierte HiFi-GAN-Modelle fürs Training (ca. 1,3 GB).
+
+## Erkenntnisse aus Phase 2 (21.10.2026)
+
+**Entscheidung: Instrumente laufen über den Noten-Modus, RVC bleibt für Stimme → Stimme.**
+
+- RVC-Klaviermodell trainiert: 36,6 min Salamander-Melodien (C2–C6), 48 kHz, RMVPE, 300 Epochen, Batch 8 →
+  knapp 4 h auf der RTX 5070 (erste Epoche 3:18 min, danach 35–55 s). Ergebnis bei allen Zwischenständen:
+  „Gesang mit Klavierfarbe“, kein Klavier. RVC behält Lautstärkeverlauf, Gleittöne, Vibrato und Silben der
+  Stimme bei; ein Klavier hat Hammeranschlag, Ausklingen und feste Tonhöhen. Das ist eine Grenze des
+  Verfahrens, nicht der Trainingsdauer.
+- **Noten-Modus** (`tunify_engine notes`): RMVPE-Tonhöhe → Noten (kurze Übergänge zusammenfassen, Stimmung
+  ausgleichen, auf erkannte Tonart einrasten, Anschlag aus der Lautstärke) → MIDI → Salamander Grand Piano über
+  FluidSynth. Klingt nach echtem Klavier, braucht kein Training, dauert Sekunden. Gleittöne und Vibrato gehen
+  verloren. Weitere Instrumente brauchen nur einen weiteren Klangsatz (SF2).
+- Eigene Testaufnahmen (Männerstimme, ca. F#2–H3): in Originaltonlage klingt es besser als eine Oktave höher.

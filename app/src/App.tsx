@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ThemeChoice, useTheme } from "./theme";
+import ConvertPage from "./ConvertPage";
 import "./App.css";
 
 type EngineInfo = {
@@ -13,7 +14,7 @@ type EngineInfo = {
 
 const AREAS = [
   { id: "start", label: "Start", phase: "" },
-  { id: "convert", label: "Stimme umwandeln", phase: "Phase 3" },
+  { id: "convert", label: "Stimme umwandeln", phase: "" },
   { id: "voices", label: "Stimmen", phase: "Phase 3" },
   { id: "train", label: "Stimme trainieren", phase: "Phase 4" },
   { id: "song", label: "Lied erzeugen", phase: "Phase 5" },
@@ -100,6 +101,7 @@ function ThemeSwitch() {
 }
 
 export default function App() {
+  const [area, setArea] = useState("start");
   return (
     <div className="shell">
       <header className="topbar">
@@ -110,23 +112,33 @@ export default function App() {
         <ThemeSwitch />
       </header>
       <nav className="sidebar">
-        {AREAS.map((area) => (
-          <div
-            key={area.id}
-            className={`nav-item ${area.id === "start" ? "active" : "disabled"}`}
-            title={area.phase ? `kommt in ${area.phase}` : undefined}
+        {AREAS.map((a) => (
+          <button
+            key={a.id}
+            className={`nav-item ${a.id === area ? "active" : ""}`}
+            disabled={!!a.phase}
+            aria-current={a.id === area ? "page" : undefined}
+            title={a.phase ? `kommt in ${a.phase}` : undefined}
+            onClick={() => setArea(a.id)}
           >
-            <span>{area.label}</span>
-            <small>{area.phase}</small>
-          </div>
+            <span>{a.label}</span>
+            <small>{a.phase}</small>
+          </button>
         ))}
       </nav>
       <main className="content">
-        <h1>Willkommen</h1>
-        <p className="muted">
-          Gesang und Melodien lokal umwandeln, Stimmen trainieren und Musik erzeugen – ohne Konto, ohne Limit.
-        </p>
-        <EngineStatus />
+        {area === "convert" ? (
+          <ConvertPage />
+        ) : (
+          <>
+            <h1>Willkommen</h1>
+            <p className="muted">
+              Gesang und Melodien lokal umwandeln, Stimmen trainieren und Musik erzeugen – ohne Konto, ohne Limit.
+            </p>
+            <button onClick={() => setArea("convert")}>Stimme umwandeln</button>
+            <EngineStatus />
+          </>
+        )}
       </main>
     </div>
   );

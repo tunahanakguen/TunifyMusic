@@ -1,5 +1,9 @@
 mod engine;
 
+use std::path::{Path, PathBuf};
+
+use tauri::{AppHandle, Emitter, Manager};
+
 /// Meldet Python-, PyTorch- und Grafikkarten-Infos des Motors.
 #[tauri::command]
 async fn engine_info() -> Result<serde_json::Value, String> {
@@ -14,11 +18,75 @@ async fn engine_info() -> Result<serde_json::Value, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Einstellungen für „Stimme umwandeln“ → Instrument (Noten-Modus).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InstrumentRequest {
+    input: String,
+    transpose: i32,
+    isolate_vocals: bool,
+    dereverb: bool,
+    denoise: bool,
+    mix_instrumental: bool,
+}
+
+/// Ausgabeordner: Musik\Tunify Music
+fn output_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().audio_dir().map_err(|e| e.to_string())?.join("Tunify Music");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Ausgabeordner nicht anlegbar: {e}"))?;
+    Ok(dir)
+}
+
+/// „Lied (Klavier).wav“, bei Bedarf „Lied (Klavier 2).wav“ usw. – nichts wird überschrieben.
+fn unique_output(dir: &Path, input: &str, label: &str) -> PathBuf {
+    let stem = Path::new(input).file_stem().and_then(|s| s.to_str()).unwrap_or("Aufnahme");
+    let mut path = dir.join(format!("{stem} ({label}).wav"));
+    let mut n = 2;
+    while path.exists() {
+        path = dir.join(format!("{stem} ({label} {n}).wav"));
+        n += 1;
+    }
+    path
+}
+
+/// Gesang → Klavier über den Noten-Modus. Fortschritt kommt als Ereignis `engine-progress`.
+#[tauri::command]
+async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Result<serde_json::Value, String> {
+    let out = unique_output(&output_dir(&app)?, &request.input, "Klavier");
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = out.to_string_lossy().to_string();
+        let transpose = request.transpose.to_string();
+        let mut args = vec!["notes", request.input.as_str(), "--out", out.as_str(), "--transpose", transpose.as_str()];
+        for (on, flag) in [
+            (request.isolate_vocals, "--isolate-vocals"),
+            (request.dereverb, "--dereverb"),
+            (request.denoise, "--denoise"),
+            (request.mix_instrumental, "--mix-instrumental"),
+        ] {
+            if on {
+                args.push(flag);
+            }
+        }
+        let events = engine::run_streaming(&args, |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("engine-progress", event);
+            }
+        })?;
+        events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![engine_info])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![engine_info, convert_instrument])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
