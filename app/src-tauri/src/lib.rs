@@ -412,12 +412,17 @@ struct SongRequest {
 
 /// Dateiname aus der Beschreibung: die ersten Wörter, ohne verbotene Zeichen
 fn song_title(caption: &str, instrumental: bool) -> String {
-    let words: Vec<&str> = caption
+    const FILLERS: [&str; 13] = ["und", "mit", "oder", "für", "im", "in", "von", "and", "with", "or", "for", "the", "a"];
+    let mut words: Vec<&str> = caption
         .split_whitespace()
         .map(|w| w.trim_matches(|c: char| ",.;!?".contains(c)))
         .filter(|w| !w.is_empty())
         .take(5)
         .collect();
+    // „… warm und“ klingt abgeschnitten
+    while words.len() > 1 && words.last().is_some_and(|w| FILLERS.contains(&w.to_lowercase().as_str())) {
+        words.pop();
+    }
     let title = file_label(&words.join(" "));
     match (title.is_empty(), instrumental) {
         (true, true) => "Instrumental".into(),
@@ -554,6 +559,7 @@ mod tests {
     fn liedtitel_aus_beschreibung() {
         assert_eq!(song_title("Lofi hip hop beat, mellow piano, soft drums", true), "Lofi hip hop beat mellow");
         assert_eq!(song_title("Rock: laut/schnell", false), "Rock_ laut_schnell");
+        assert_eq!(song_title("Akustische Gitarre, Lagerfeuer, warm und ruhig", true), "Akustische Gitarre Lagerfeuer warm");
         assert_eq!(song_title("   ", true), "Instrumental");
         assert_eq!(song_title("", false), "Lied");
     }
