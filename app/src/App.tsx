@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ThemeChoice, useTheme } from "./theme";
 import ConvertPage from "./ConvertPage";
+import HistoryPage from "./HistoryPage";
 import "./App.css";
 
 type EngineInfo = {
@@ -19,7 +20,7 @@ const AREAS = [
   { id: "train", label: "Stimme trainieren", phase: "Phase 4" },
   { id: "song", label: "Lied erzeugen", phase: "Phase 5" },
   { id: "instrumental", label: "Instrumental erzeugen", phase: "Phase 5" },
-  { id: "history", label: "Verlauf", phase: "Phase 3" },
+  { id: "history", label: "Verlauf", phase: "" },
 ];
 
 function EngineStatus() {
@@ -102,6 +103,8 @@ function ThemeSwitch() {
 
 export default function App() {
   const [area, setArea] = useState("start");
+  // aus dem Verlauf heraus „Umwandeln“: Datei vorwählen; der Zähler erzwingt eine frische Seite
+  const [handoff, setHandoff] = useState<{ path: string; n: number } | null>(null);
   return (
     <div className="shell">
       <header className="topbar">
@@ -119,7 +122,10 @@ export default function App() {
             disabled={!!a.phase}
             aria-current={a.id === area ? "page" : undefined}
             title={a.phase ? `kommt in ${a.phase}` : undefined}
-            onClick={() => setArea(a.id)}
+            onClick={() => {
+              setArea(a.id);
+              setHandoff(null);
+            }}
           >
             <span>{a.label}</span>
             <small>{a.phase}</small>
@@ -128,7 +134,14 @@ export default function App() {
       </nav>
       <main className="content">
         {area === "convert" ? (
-          <ConvertPage />
+          <ConvertPage key={handoff?.n ?? 0} initialInput={handoff?.path ?? null} />
+        ) : area === "history" ? (
+          <HistoryPage
+            onConvert={(path) => {
+              setHandoff({ path, n: (handoff?.n ?? 0) + 1 });
+              setArea("convert");
+            }}
+          />
         ) : (
           <>
             <h1>Willkommen</h1>

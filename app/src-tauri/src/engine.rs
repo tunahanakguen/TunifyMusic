@@ -3,6 +3,8 @@
 use std::io::{BufRead, BufReader, Read};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
@@ -24,16 +26,41 @@ fn python() -> PathBuf {
     engine_dir().join(".venv").join("Scripts").join("python.exe")
 }
 
+/// Prozess-ID der laufenden Umwandlung (es läuft immer höchstens eine), damit sie abgebrochen werden kann.
+static JOB: Mutex<Option<u32>> = Mutex::new(None);
+static CANCELLED: AtomicBool = AtomicBool::new(false);
+
+pub const CANCELLED_MESSAGE: &str = "Abgebrochen";
+
 /// Führt einen Motor-Befehl aus und gibt alle Ereignisse zurück.
 /// Ein `error`-Ereignis wird zum Fehler.
 pub fn run(args: &[&str]) -> Result<Vec<serde_json::Value>, String> {
-    run_streaming(args, |_| {})
+    run_inner(args, |_| {}, false)
 }
 
-/// Wie `run`, meldet aber jedes Ereignis sofort an `on_event` (z. B. Fortschritt für die Oberfläche).
-pub fn run_streaming(
+/// Wie `run`, meldet aber jedes Ereignis sofort an `on_event` (z. B. Fortschritt für die Oberfläche)
+/// und lässt sich mit `cancel` abbrechen (dann `Err(CANCELLED_MESSAGE)`).
+pub fn run_job(args: &[&str], on_event: impl FnMut(&serde_json::Value)) -> Result<Vec<serde_json::Value>, String> {
+    run_inner(args, on_event, true)
+}
+
+/// Bricht die laufende Umwandlung ab, samt ihren Unterprozessen (FFmpeg, FluidSynth).
+/// Gibt `false` zurück, wenn gerade keine läuft.
+pub fn cancel() -> bool {
+    let Some(pid) = *JOB.lock().unwrap() else { return false };
+    CANCELLED.store(true, Ordering::SeqCst);
+    let mut kill = Command::new("taskkill");
+    kill.args(["/T", "/F", "/PID", &pid.to_string()]).stdout(Stdio::null()).stderr(Stdio::null());
+    #[cfg(windows)]
+    kill.creation_flags(CREATE_NO_WINDOW);
+    let _ = kill.status();
+    true
+}
+
+fn run_inner(
     args: &[&str],
     mut on_event: impl FnMut(&serde_json::Value),
+    job: bool,
 ) -> Result<Vec<serde_json::Value>, String> {
     let python = python();
     if !python.exists() {
@@ -51,6 +78,10 @@ pub fn run_streaming(
     command.creation_flags(CREATE_NO_WINDOW);
 
     let mut child = command.spawn().map_err(|e| format!("Motor startet nicht: {e}"))?;
+    if job {
+        CANCELLED.store(false, Ordering::SeqCst);
+        *JOB.lock().unwrap() = Some(child.id());
+    }
     // stderr nebenher leeren, sonst blockiert der Motor bei viel Bibliotheks-Ausgabe
     let mut stderr = child.stderr.take().expect("stderr umgeleitet");
     let stderr_reader = std::thread::spawn(move || {
@@ -69,6 +100,12 @@ pub fn run_streaming(
     }
     let status = child.wait().map_err(|e| format!("Motor nicht beendet: {e}"))?;
     let stderr = stderr_reader.join().unwrap_or_default();
+    if job {
+        *JOB.lock().unwrap() = None;
+        if CANCELLED.swap(false, Ordering::SeqCst) {
+            return Err(CANCELLED_MESSAGE.to_string());
+        }
+    }
 
     if let Some(error) = events.iter().find(|e| e["event"] == "error") {
         return Err(error["message"].as_str().unwrap_or("Unbekannter Fehler").to_string());
@@ -96,8 +133,25 @@ mod tests {
     #[test]
     fn ereignisse_kommen_einzeln_an() {
         let mut seen = 0;
-        let events = run_streaming(&["info"], |_| seen += 1).expect("Motor läuft");
+        // nicht als Job, sonst kommt er dem parallel laufenden Abbruch-Test in die Quere
+        let events = run_inner(&["info"], |_| seen += 1, false).expect("Motor läuft");
         assert_eq!(seen, events.len());
+    }
+
+    #[test]
+    fn abbrechen_beendet_den_motor() {
+        assert!(!cancel(), "ohne laufende Umwandlung gibt es nichts abzubrechen");
+        let worker = std::thread::spawn(|| {
+            // Bibliotheken laden dauert einige Sekunden – genug Zeit zum Abbrechen
+            run_job(&["prepare"], |_| {})
+        });
+        let started = std::time::Instant::now();
+        while JOB.lock().unwrap().is_none() {
+            assert!(started.elapsed().as_secs() < 10, "Motor startet nicht");
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        assert!(cancel());
+        assert_eq!(worker.join().unwrap().unwrap_err(), CANCELLED_MESSAGE);
     }
 
     #[test]

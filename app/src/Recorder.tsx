@@ -7,7 +7,7 @@ type Props = {
   onError: (message: string) => void;
 };
 
-/** Mikrofon-Aufnahme direkt in der App. Speichert über Rust als WebM unter Musik\Tunify Music\Aufnahmen. */
+/** Mikrofon-Aufnahme direkt in der App. Speichert über Rust als WAV unter Musik\Tunify Music\Aufnahmen. */
 export default function Recorder({ disabled, onRecorded, onError }: Props) {
   const [waiting, setWaiting] = useState(false);
   const [recording, setRecording] = useState(false);

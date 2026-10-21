@@ -8,7 +8,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import Recorder from "./Recorder";
 
 type Progress = { step: string; percent: number; message: string };
-type Result = { output: string; notes: number; instrument: string; octave: number };
+type Result = { output: string; notes: number; instrument: string; octave: number; midi?: string };
 type Instrument = { id: string; label: string; available: boolean };
 
 const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus", "webm", "mp4"];
@@ -21,8 +21,32 @@ function isRecording(path: string) {
   return /[\\/]Tunify Music[\\/]Aufnahmen[\\/]/.test(path);
 }
 
-export default function ConvertPage() {
-  const [input, setInput] = useState<string | null>(null);
+type Format = "wav" | "mp3" | "flac";
+const FORMATS: { id: Format; label: string }[] = [
+  { id: "wav", label: "WAV" },
+  { id: "mp3", label: "MP3" },
+  { id: "flac", label: "FLAC" },
+];
+
+function loadFormat(): Format {
+  try {
+    const saved = localStorage.getItem("tunify.format");
+    return FORMATS.some((f) => f.id === saved) ? (saved as Format) : "wav";
+  } catch {
+    return "wav";
+  }
+}
+
+function saveFormat(format: Format) {
+  try {
+    localStorage.setItem("tunify.format", format);
+  } catch {
+    // nur eine Bequemlichkeit – ohne Speicher gilt beim nächsten Start wieder WAV
+  }
+}
+
+export default function ConvertPage({ initialInput }: { initialInput: string | null }) {
+  const [input, setInput] = useState<string | null>(initialInput);
   const [instruments, setInstruments] = useState<Instrument[]>([{ id: "klavier", label: "Klavier", available: true }]);
   const [instrument, setInstrument] = useState("klavier");
   const [transpose, setTranspose] = useState(0);
@@ -30,7 +54,10 @@ export default function ConvertPage() {
   const [dereverb, setDereverb] = useState(false);
   const [denoise, setDenoise] = useState(false);
   const [mixInstrumental, setMixInstrumental] = useState(false);
+  const [format, setFormat] = useState<Format>(() => loadFormat());
+  const [midi, setMidi] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [cancelled, setCancelled] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +117,7 @@ export default function ConvertPage() {
     if (!input) return;
     setBusy(true);
     setError(null);
+    setCancelled(false);
     setResult(null);
     setProgress({ step: "start", percent: 0, message: "Motor starten" });
     try {
@@ -104,11 +132,14 @@ export default function ConvertPage() {
             dereverb,
             denoise,
             mixInstrumental: isolateVocals && mixInstrumental,
+            format,
+            midi,
           },
         }),
       );
     } catch (e) {
-      setError(String(e));
+      if (String(e) === "Abgebrochen") setCancelled(true);
+      else setError(String(e));
     } finally {
       setBusy(false);
       setProgress(null);
@@ -211,9 +242,39 @@ export default function ConvertPage() {
       <section className="card wide">
         <div className="card-head">
           <h2>3 · Umwandeln</h2>
-          <button onClick={convert} disabled={!input || busy}>
-            {busy ? "Läuft …" : "Umwandeln"}
-          </button>
+          <div className="actions">
+            {busy && (
+              <button className="ghost" onClick={() => invoke("cancel_conversion")}>
+                Abbrechen
+              </button>
+            )}
+            <button onClick={convert} disabled={!input || busy}>
+              {busy ? "Läuft …" : "Umwandeln"}
+            </button>
+          </div>
+        </div>
+        <div className="output-options">
+          <div className="segmented" role="radiogroup" aria-label="Format">
+            {FORMATS.map((f) => (
+              <button
+                key={f.id}
+                role="radio"
+                aria-checked={format === f.id}
+                className={format === f.id ? "active" : ""}
+                onClick={() => {
+                  setFormat(f.id);
+                  saveFormat(f.id);
+                }}
+                disabled={busy}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <label>
+            <input type="checkbox" checked={midi} onChange={(e) => setMidi(e.target.checked)} disabled={busy} />
+            Noten zusätzlich als MIDI speichern
+          </label>
         </div>
         {progress && (
           <div className="progress">
@@ -224,6 +285,7 @@ export default function ConvertPage() {
           </div>
         )}
         {error && <p className="error">{error}</p>}
+        {cancelled && <p className="muted">Abgebrochen.</p>}
         {result && (
           <div className="result" ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "end" })}>
             <p>
@@ -236,9 +298,12 @@ export default function ConvertPage() {
               </span>
             </p>
             <audio controls src={convertFileSrc(result.output)} />
-            <button className="ghost" onClick={() => revealItemInDir(result.output)}>
-              Im Ordner zeigen
-            </button>
+            <div className="actions">
+              <button className="ghost" onClick={() => revealItemInDir(result.output)}>
+                Im Ordner zeigen
+              </button>
+              {result.midi && <span className="muted">Noten gespeichert: {fileName(result.midi)}</span>}
+            </div>
           </div>
         )}
       </section>
