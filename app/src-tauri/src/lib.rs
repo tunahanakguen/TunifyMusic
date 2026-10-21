@@ -451,6 +451,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|_| {
+            // Motor gleich beim Start laden (ca. 20 s), damit die erste Umwandlung nicht darauf wartet
+            std::thread::spawn(|| {
+                let _ = engine::start_server();
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             engine_info,
             list_instruments,

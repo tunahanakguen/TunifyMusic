@@ -89,7 +89,7 @@ export default function TrainPage({ active, onUse }: Props) {
     setError(null);
     setCancelled(false);
     setTrained(null);
-    setProgress({ step: "start", percent: 0, message: "Motor starten" });
+    setProgress({ step: "start", percent: 0, message: "Motor bereit machen …" });
     try {
       setTrained(
         await invoke<Voice>("train_voice", {

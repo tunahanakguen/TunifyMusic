@@ -12,6 +12,7 @@ Klavier kommt aus Salamander Grand Piano, alle anderen Instrumente aus GeneralUs
 import shutil
 import subprocess
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 from typing import NamedTuple
 
@@ -63,11 +64,25 @@ ONSET_DB = 6.0         # Lautstärkesprung, der einen neuen Anschlag auf gleiche
 QUIET_DB = 45.0        # leiser als (lautester Moment − 45 dB) gilt als Pause
 
 
+@lru_cache(maxsize=1)
+def rmvpe():
+    """Tonhöhen-Erkenner; im Dauerbetrieb (serve) wird er nur einmal geladen."""
+    import sys
+
+    import torch
+
+    if str(APPLIO_DIR) not in sys.path:
+        sys.path.insert(0, str(APPLIO_DIR))
+    from rvc.lib.predictors.RMVPE import RMVPE0Predictor  # noqa: PLC0415
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return RMVPE0Predictor(str(APPLIO_DIR / "rvc" / "models" / "predictors" / "rmvpe.pt"), device=device)
+
+
 def _pitch_track(wav: Path):
     """Tonhöhe (MIDI-Wert, NaN = stumm) und Lautstärke (dB) je 10 ms."""
     import numpy as np
     import soundfile as sf
-    import torch
 
     audio, sr = sf.read(str(wav), dtype="float32")
     if audio.ndim > 1:
@@ -76,14 +91,7 @@ def _pitch_track(wav: Path):
         import librosa
         audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
 
-    import sys
-    if str(APPLIO_DIR) not in sys.path:
-        sys.path.insert(0, str(APPLIO_DIR))
-    from rvc.lib.predictors.RMVPE import RMVPE0Predictor  # noqa: PLC0415
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    rmvpe = RMVPE0Predictor(str(APPLIO_DIR / "rvc" / "models" / "predictors" / "rmvpe.pt"), device=device)
-    f0 = rmvpe.infer_from_audio(audio, thred=0.03)
+    f0 = rmvpe().infer_from_audio(audio, thred=0.03)
 
     hop = 160
     frames = len(f0)

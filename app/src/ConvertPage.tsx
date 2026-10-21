@@ -151,7 +151,7 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
     setError(null);
     setCancelled(false);
     setResult(null);
-    setProgress({ step: "start", percent: 0, message: "Motor starten" });
+    setProgress({ step: "start", percent: 0, message: "Motor bereit machen …" });
     const shared = { input, isolateVocals, dereverb, denoise, mixInstrumental: isolateVocals && mixInstrumental, format };
     try {
       setResult(
