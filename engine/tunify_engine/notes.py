@@ -18,7 +18,7 @@ from typing import NamedTuple
 
 from . import proc, protocol
 from .convert import (APPLIO_DIR, DENOISE_MODEL, DEREVERB_MODEL, ENGINE_DIR, SILENCE_DB, VOCALS_MODEL,
-                      _mix, _peak_db, _separate, _to_wav)
+                      _peak_db, _separate, _to_wav, check_mix_args, mix_instrumental)
 
 REPO_DIR = ENGINE_DIR.parent
 FLUIDSYNTH = ENGINE_DIR / ".tools" / "fluidsynth" / "fluidsynth-v2.6.1-win10-x64-cpp11" / "bin" / "fluidsynth.exe"
@@ -306,8 +306,7 @@ def notes_mode(args) -> None:
         raise ValueError(f"Unbekanntes Instrument: {args.instrument}")
     if not source.exists():
         raise FileNotFoundError(f"Eingabe fehlt: {source}")
-    if args.mix_instrumental and not args.isolate_vocals:
-        raise ValueError("--mix-instrumental geht nur zusammen mit --isolate-vocals")
+    check_mix_args(args)
     if not -24 <= args.transpose <= 24:
         raise ValueError("--transpose muss zwischen -24 und 24 liegen")
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -348,10 +347,7 @@ def notes_mode(args) -> None:
         _render(midi_path, rendered, instrument)
 
         if args.mix_instrumental and instrumental is not None:
-            protocol.progress("mix", 90, "Begleitung dazumischen")
-            mixed = work / "mixed.wav"
-            _mix(rendered, instrumental, mixed)
-            rendered = mixed
+            rendered = mix_instrumental(rendered, instrumental, args.instrumental_pitch, work)
 
         protocol.progress("save", 97, "Speichern")
         if out.suffix.lower() == ".wav":

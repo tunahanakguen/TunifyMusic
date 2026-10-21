@@ -1,4 +1,5 @@
 mod engine;
+mod history;
 mod voices;
 
 use std::path::{Path, PathBuf};
@@ -84,6 +85,9 @@ struct InstrumentRequest {
     dereverb: bool,
     denoise: bool,
     mix_instrumental: bool,
+    /// Begleitung beim Dazumischen um Halbtöne verschieben (Cover in anderer Tonlage)
+    #[serde(default)]
+    instrumental_pitch: i32,
     /// "wav", "mp3" oder "flac"
     format: String,
     /// erkannte Noten zusätzlich als .mid neben die Ausgabe legen
@@ -91,7 +95,6 @@ struct InstrumentRequest {
 }
 
 const FORMATS: [&str; 3] = ["wav", "mp3", "flac"];
-const AUDIO_EXTENSIONS: [&str; 4] = ["wav", "mp3", "flac", "webm"];
 
 /// Ausgabeordner: Musik\Tunify Music
 fn output_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -125,6 +128,7 @@ async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Resul
         let midi = out.with_extension("mid").to_string_lossy().to_string();
         let out = out.to_string_lossy().to_string();
         let transpose = request.transpose.to_string();
+        let instrumental_pitch = request.instrumental_pitch.to_string();
         let mut args = vec![
             "notes",
             request.input.as_str(),
@@ -144,6 +148,9 @@ async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Resul
             if on {
                 args.push(flag);
             }
+        }
+        if request.mix_instrumental && request.instrumental_pitch != 0 {
+            args.extend(["--instrumental-pitch", instrumental_pitch.as_str()]);
         }
         if request.midi {
             args.extend(["--midi", midi.as_str()]);
@@ -211,6 +218,8 @@ struct VoiceRequest {
     dereverb: bool,
     denoise: bool,
     mix_instrumental: bool,
+    #[serde(default)]
+    instrumental_pitch: i32,
     format: String,
 }
 
@@ -231,6 +240,7 @@ async fn convert_voice(app: AppHandle, request: VoiceRequest) -> Result<serde_js
         let out = out.to_string_lossy().to_string();
         let (pitch, formant) = (request.pitch.to_string(), request.formant.to_string());
         let (index_rate, protect) = (request.index_rate.to_string(), request.protect.to_string());
+        let instrumental_pitch = request.instrumental_pitch.to_string();
         let mut args = vec![
             "convert",
             request.input.as_str(),
@@ -257,6 +267,9 @@ async fn convert_voice(app: AppHandle, request: VoiceRequest) -> Result<serde_js
             if on {
                 args.push(flag);
             }
+        }
+        if request.mix_instrumental && request.instrumental_pitch != 0 {
+            args.extend(["--instrumental-pitch", instrumental_pitch.as_str()]);
         }
         let events = engine::run_job(&args, |event| {
             if event["event"] == "progress" {
@@ -465,47 +478,28 @@ fn cancel_conversion() -> bool {
     engine::cancel()
 }
 
-/// Ein Eintrag im Verlauf: eine Datei aus Musik\Tunify Music (Ergebnisse) oder …\Aufnahmen.
-#[derive(serde::Serialize)]
-struct HistoryItem {
-    path: String,
-    name: String,
-    recording: bool,
-    /// Sekunden seit 1970
-    modified: u64,
-    bytes: u64,
+/// Favoriten des Verlaufs im App-Datenordner
+fn favorites_file(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("favorites.json"))
 }
 
 /// Alle Ergebnisse und Aufnahmen, neueste zuerst.
 #[tauri::command]
-fn list_history(app: AppHandle) -> Result<Vec<HistoryItem>, String> {
-    let dir = output_dir(&app)?;
-    let mut items = Vec::new();
-    for (folder, recording) in [(dir.clone(), false), (dir.join("Aufnahmen"), true)] {
-        let Ok(entries) = std::fs::read_dir(&folder) else { continue };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-            let Ok(meta) = entry.metadata() else { continue };
-            if !meta.is_file() || !AUDIO_EXTENSIONS.contains(&extension.as_str()) {
-                continue;
-            }
-            let modified = meta
-                .modified()
-                .ok()
-                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-                .map_or(0, |d| d.as_secs());
-            items.push(HistoryItem {
-                name: path.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                path: path.to_string_lossy().to_string(),
-                recording,
-                modified,
-                bytes: meta.len(),
-            });
-        }
-    }
-    items.sort_by(|a, b| b.modified.cmp(&a.modified));
-    Ok(items)
+fn list_history(app: AppHandle) -> Result<Vec<history::Item>, String> {
+    Ok(history::list(&output_dir(&app)?, &favorites_file(&app)?))
+}
+
+#[tauri::command]
+fn set_favorite(app: AppHandle, path: String, favorite: bool) -> Result<(), String> {
+    history::set_favorite(&output_dir(&app)?, &favorites_file(&app)?, &path, favorite)
+}
+
+/// In den Papierkorb verschieben (nur Dateien im Ordner von Tunify Music).
+#[tauri::command]
+fn delete_history_item(app: AppHandle, path: String) -> Result<(), String> {
+    history::delete(&output_dir(&app)?, &favorites_file(&app)?, &path)
 }
 
 /// Pfad des Ausgabeordners (für „Ordner öffnen“).
@@ -583,6 +577,8 @@ pub fn run() {
             generate_song,
             cancel_conversion,
             list_history,
+            set_favorite,
+            delete_history_item,
             output_folder
         ])
         .run(tauri::generate_context!())

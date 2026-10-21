@@ -46,6 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     conv.add_argument("--protect", type=float, default=0.33)
     conv.add_argument("--mix-instrumental", action="store_true",
                       help="Begleitung wieder dazumischen (Cover); nur mit --isolate-vocals")
+    conv.add_argument("--instrumental-pitch", type=int, default=0, help="Begleitung um Halbtöne verschieben, -12 … 12")
 
     sub.add_parser("instruments", help="Instrumente des Noten-Modus auflisten")
     notes = sub.add_parser("notes", help="Noten-Modus: Melodie erkennen und mit echtem Instrument nachspielen")
@@ -63,6 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     notes.add_argument("--denoise", action="store_true", help="Rauschen reduzieren")
     notes.add_argument("--mix-instrumental", action="store_true",
                        help="Begleitung wieder dazumischen; nur mit --isolate-vocals")
+    notes.add_argument("--instrumental-pitch", type=int, default=0, help="Begleitung um Halbtöne verschieben, -12 … 12")
 
     tr = sub.add_parser("train", help="Stimme aus eigenen Aufnahmen trainieren (RVC)")
     tr.add_argument("inputs", nargs="+", help="Aufnahmen mit Gesang (MP3, WAV, …)")

@@ -90,6 +90,36 @@ def _mix(vocals: Path, instrumental: Path, target: Path) -> None:
     )
 
 
+def _transpose(source: Path, semitones: int, target: Path) -> Path:
+    """Begleitung um Halbtöne verschieben, ohne das Tempo zu ändern (Rubber Band in FFmpeg)."""
+    if semitones == 0:
+        return source
+    proc.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source),
+         "-af", f"rubberband=pitch={2 ** (semitones / 12):.6f}:pitchq=quality:transients=smooth", str(target)],
+        check=True,
+    )
+    return target
+
+
+def check_mix_args(args) -> None:
+    if args.mix_instrumental and not args.isolate_vocals:
+        raise ValueError("--mix-instrumental geht nur zusammen mit --isolate-vocals")
+    if not -12 <= args.instrumental_pitch <= 12:
+        raise ValueError("--instrumental-pitch muss zwischen -12 und 12 liegen")
+
+
+def mix_instrumental(sound: Path, instrumental: Path, semitones: int, work: Path) -> Path:
+    """Begleitung (falls gewünscht transponiert) unter die neue Stimme bzw. das Instrument mischen."""
+    if semitones:
+        protocol.progress("transpose", 85, "Begleitung transponieren")
+    instrumental = _transpose(instrumental, semitones, work / "instrumental_transposed.wav")
+    protocol.progress("mix", 90, "Begleitung dazumischen")
+    mixed = work / "mixed.wav"
+    _mix(sound, instrumental, mixed)
+    return mixed
+
+
 def convert(args) -> None:
     source = Path(args.input).resolve()
     out = Path(args.out).resolve()
@@ -99,8 +129,7 @@ def convert(args) -> None:
         raise FileNotFoundError(f"Eingabe fehlt: {source}")
     if not model.exists():
         raise FileNotFoundError(f"Modell fehlt: {model}")
-    if args.mix_instrumental and not args.isolate_vocals:
-        raise ValueError("--mix-instrumental geht nur zusammen mit --isolate-vocals")
+    check_mix_args(args)
     if not -12 <= args.pitch <= 12:
         raise ValueError("--pitch muss zwischen -12 und 12 liegen")
     if not 0.1 <= args.formant <= 2.0:
@@ -159,10 +188,7 @@ def convert(args) -> None:
             raise RuntimeError(f"RVC hat keine Datei erzeugt: {message}")
 
         if args.mix_instrumental and instrumental is not None:
-            protocol.progress("mix", 90, "Begleitung dazumischen")
-            mixed = work / "mixed.wav"
-            _mix(converted, instrumental, mixed)
-            converted = mixed
+            converted = mix_instrumental(converted, instrumental, args.instrumental_pitch, work)
 
         protocol.progress("save", 97, "Speichern")
         if out.suffix.lower() == ".wav":

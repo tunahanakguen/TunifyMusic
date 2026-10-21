@@ -530,6 +530,22 @@ audio.preview {
   margin-top: 24px;
 }
 
+.history-search {
+  flex: 1;
+  min-width: 160px;
+  max-width: 280px;
+}
+
+button.star {
+  font-size: 18px;
+  line-height: 1;
+  padding: 6px 10px;
+}
+
+button.star.on {
+  color: var(--accent);
+}
+
 .history-bar .segmented small {
   margin-left: 4px;
   opacity: 0.75;
@@ -630,7 +646,8 @@ details.advanced input[type="range"] {
   accent-color: var(--accent);
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="search"] {
   font: inherit;
   color: var(--text);
   background: var(--bg);
@@ -640,7 +657,8 @@ input[type="text"] {
   width: 100%;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus,
+input[type="search"]:focus {
   outline: 2px solid var(--accent);
   outline-offset: 0;
 }

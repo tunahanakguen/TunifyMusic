@@ -78,6 +78,7 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
   const [dereverb, setDereverb] = useState(false);
   const [denoise, setDenoise] = useState(false);
   const [mixInstrumental, setMixInstrumental] = useState(false);
+  const [instrumentalPitch, setInstrumentalPitch] = useState(0);
   const [format, setFormat] = useState<Format>(() => load("tunify.format", ["wav", "mp3", "flac"] as const, "wav"));
   const [busy, setBusy] = useState(false);
   const [cancelled, setCancelled] = useState(false);
@@ -144,6 +145,8 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
 
   const selectedVoice = voices?.find((v) => v.id === voice) ?? null;
   const ready = !!input && (mode === "instrument" || !!selectedVoice);
+  // Gleiche Tonart mit möglichst kleiner Verschiebung: Oktaven ändern die Tonart nicht (+7 klingt wie −5)
+  const matchingKey = ((((mode === "voice" ? pitch : transpose) % 12) + 18) % 12) - 6;
 
   async function convert() {
     if (!input || !ready) return;
@@ -152,7 +155,8 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
     setCancelled(false);
     setResult(null);
     setProgress({ step: "start", percent: 0, message: "Motor bereit machen …" });
-    const shared = { input, isolateVocals, dereverb, denoise, mixInstrumental: isolateVocals && mixInstrumental, format };
+    const mix = isolateVocals && mixInstrumental;
+    const shared = { input, isolateVocals, dereverb, denoise, mixInstrumental: mix, instrumentalPitch: mix ? instrumentalPitch : 0, format };
     try {
       setResult(
         mode === "instrument"
@@ -410,6 +414,32 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
             Begleitmusik wieder dazumischen
           </label>
         </div>
+        {isolateVocals && mixInstrumental && (
+          <div className="field">
+            <label htmlFor="instrumental-pitch">
+              Tonhöhe der Begleitung <strong>{signed(instrumentalPitch)}</strong> Halbtöne
+              <span className="muted"> · damit Begleitung und neue Stimme in derselben Tonart sind</span>
+            </label>
+            <div className="range-row">
+              <input
+                id="instrumental-pitch"
+                type="range"
+                min={-12}
+                max={12}
+                value={instrumentalPitch}
+                onChange={(e) => setInstrumentalPitch(Number(e.target.value))}
+                disabled={busy}
+              />
+              <button
+                className="ghost"
+                onClick={() => setInstrumentalPitch(matchingKey)}
+                disabled={busy || instrumentalPitch === matchingKey}
+              >
+                Passend {mode === "voice" ? "zur Stimme" : "zum Instrument"} ({signed(matchingKey)})
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card wide">
