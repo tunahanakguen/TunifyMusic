@@ -300,6 +300,9 @@ export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }
                 + Stimmen verwalten
               </button>
             </div>
+            <p className="muted small tip">
+              Funktioniert mit Gesang oder Sprache, nicht mit Instrumenten – für Instrumente oben „Instrument“ wählen.
+            </p>
             <div className="field">
               <label htmlFor="pitch">
                 Tonhöhe <strong>{signed(pitch)}</strong> Halbtöne
