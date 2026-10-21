@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
-from . import protocol
+from . import proc, protocol
 from .convert import (APPLIO_DIR, DENOISE_MODEL, DEREVERB_MODEL, ENGINE_DIR, SILENCE_DB, VOCALS_MODEL,
                       _mix, _peak_db, _separate, _to_wav)
 
@@ -270,7 +270,7 @@ def _render(midi_path: Path, target: Path, instrument: Instrument) -> None:
     if not FLUIDSYNTH.exists() or not instrument.sf2.exists():
         raise FileNotFoundError(
             f"Klangsatz für {instrument.label} fehlt – bitte tools/setup-instruments.ps1 ausführen")
-    subprocess.run(
+    proc.run(
         [str(FLUIDSYNTH), "-ni", "-q", "-g", "1.0", "-r", "48000",
          "-o", "synth.reverb.active=0", "-o", "synth.chorus.active=0",
          "-F", str(target), str(instrument.sf2), str(midi_path)],
@@ -349,7 +349,7 @@ def notes_mode(args) -> None:
         if out.suffix.lower() == ".wav":
             shutil.copyfile(rendered, out)
         else:
-            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(rendered), str(out)], check=True)
+            proc.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(rendered), str(out)], check=True)
 
     protocol.progress("done", 100, "Fertig")
     protocol.emit("result", output=str(out), notes=len(notes), instrument=instrument.label, octave=octave // 12)

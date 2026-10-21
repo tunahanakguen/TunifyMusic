@@ -131,7 +131,7 @@ TunifyMusic/
 | 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo ✓ (20.10.2026) |
 | 2 | Klavier-Modell trainieren und Qualität prüfen ✓ (21.10.2026) → Ergebnis: Klavier über den **Noten-Modus**, RVC nur für Stimme → Stimme |
 | 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek ✓ (21.10.2026): Instrument (Noten-Modus, 18 Instrumente) und Stimme (RVC), Mikrofon-Aufnahme, WAV/MP3/FLAC, MIDI, Abbrechen, Verlauf, Stimmen-Bibliothek mit Import (.pth/.index/.zip) |
-| 4 | „Stimme trainieren“ in der App |
+| 4 | „Stimme trainieren“ in der App ✓ (21.10.2026): Aufnahmen hinzufügen/aufnehmen, Vorverarbeitung, Schnell/Standard/Gründlich (100/200/400 Epochen, 40 kHz), Fortschritt je Epoche mit Restzeit, Abbrechen, Ergebnis direkt in der Bibliothek; 1,4 min Gesang × 100 Epochen ≈ 11 min |
 | 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme |
 | 6 | Weitere Instrumente, Installer |
 

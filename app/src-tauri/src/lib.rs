@@ -274,6 +274,88 @@ async fn convert_voice(app: AppHandle, request: VoiceRequest) -> Result<serde_js
     .map_err(|e| e.to_string())?
 }
 
+/// Einstellungen für „Stimme trainieren“.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TrainRequest {
+    name: String,
+    inputs: Vec<String>,
+    epochs: u32,
+    isolate_vocals: bool,
+    dereverb: bool,
+    denoise: bool,
+}
+
+/// Arbeitsordner eines Trainings löschen (enthält über 1 GB Zwischenstände) – nur innerhalb von Applios logs/.
+fn remove_workspace(path: &str) {
+    let logs = engine::engine_dir().join("vendor").join("applio").join("logs");
+    let path = PathBuf::from(path);
+    let inside = match (path.canonicalize(), logs.canonicalize()) {
+        (Ok(p), Ok(l)) => p.starts_with(&l) && p != l,
+        _ => false,
+    };
+    if inside {
+        let _ = std::fs::remove_dir_all(&path);
+    }
+}
+
+/// Trainiert eine Stimme aus eigenen Aufnahmen und legt sie in die Bibliothek.
+/// Fortschritt kommt als Ereignis `train-progress`; abbrechen wie beim Umwandeln.
+#[tauri::command]
+async fn train_voice(app: AppHandle, request: TrainRequest) -> Result<voices::Voice, String> {
+    let name = request.name.trim().to_string();
+    if name.is_empty() {
+        return Err("Bitte einen Namen für die Stimme angeben".into());
+    }
+    if request.inputs.is_empty() {
+        return Err("Bitte mindestens eine Aufnahme hinzufügen".into());
+    }
+    if !(1..=1000).contains(&request.epochs) {
+        return Err("Epochen müssen zwischen 1 und 1000 liegen".into());
+    }
+    let library = voices_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let epochs = request.epochs.to_string();
+        let mut args = vec!["train"];
+        args.extend(request.inputs.iter().map(String::as_str));
+        args.extend(["--epochs", epochs.as_str()]);
+        for (on, flag) in [
+            (request.isolate_vocals, "--isolate-vocals"),
+            (request.dereverb, "--dereverb"),
+            (request.denoise, "--denoise"),
+        ] {
+            if on {
+                args.push(flag);
+            }
+        }
+        let mut workspace = None;
+        let outcome = engine::run_job(&args, |event| match event["event"].as_str() {
+            Some("workspace") => workspace = event["path"].as_str().map(str::to_string),
+            Some("progress") => {
+                let _ = app.emit("train-progress", event);
+            }
+            _ => {}
+        })
+        .and_then(|events| {
+            let result = events
+                .into_iter()
+                .find(|e| e["event"] == "result")
+                .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())?;
+            let mut files = vec![result["model"].as_str().unwrap_or_default().to_string()];
+            if let Some(index) = result["index"].as_str() {
+                files.push(index.to_string());
+            }
+            voices::import(&library, &name, &files)
+        });
+        if let Some(path) = workspace {
+            remove_workspace(&path);
+        }
+        outcome
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Bricht die laufende Umwandlung ab.
 #[tauri::command]
 fn cancel_conversion() -> bool {
@@ -379,6 +461,7 @@ pub fn run() {
             rename_voice,
             delete_voice,
             convert_voice,
+            train_voice,
             cancel_conversion,
             list_history,
             output_folder

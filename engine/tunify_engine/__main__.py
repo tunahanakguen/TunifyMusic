@@ -52,6 +52,14 @@ def main() -> None:
     notes.add_argument("--mix-instrumental", action="store_true",
                        help="Begleitung wieder dazumischen; nur mit --isolate-vocals")
 
+    tr = sub.add_parser("train", help="Stimme aus eigenen Aufnahmen trainieren (RVC)")
+    tr.add_argument("inputs", nargs="+", help="Aufnahmen mit Gesang (MP3, WAV, …)")
+    tr.add_argument("--epochs", type=int, default=200)
+    tr.add_argument("--batch", type=int, default=8)
+    tr.add_argument("--isolate-vocals", action="store_true", help="Instrumental entfernen")
+    tr.add_argument("--dereverb", action="store_true", help="Hall/Echo entfernen")
+    tr.add_argument("--denoise", action="store_true", help="Rauschen reduzieren")
+
     args = parser.parse_args()
     try:
         if args.command == "info":
@@ -66,6 +74,9 @@ def main() -> None:
         elif args.command == "instruments":
             from .notes import list_instruments
             list_instruments()
+        elif args.command == "train":
+            from .train import train
+            train(args)
         elif args.command == "notes":
             from .notes import notes_mode
             notes_mode(args)

@@ -135,7 +135,7 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
             </div>
           </div>
         ) : (
-          <p className="muted small">Eigene Stimmen trainieren kommt in Phase 4 direkt in der App.</p>
+          <p className="muted small">Eine eigene Stimme machst du unter „Stimme trainieren“.</p>
         )}
         {error && <p className="error">{error}</p>}
       </section>

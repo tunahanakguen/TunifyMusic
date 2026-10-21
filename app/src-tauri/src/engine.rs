@@ -31,6 +31,7 @@ static JOB: Mutex<Option<u32>> = Mutex::new(None);
 static CANCELLED: AtomicBool = AtomicBool::new(false);
 
 pub const CANCELLED_MESSAGE: &str = "Abgebrochen";
+pub const BUSY_MESSAGE: &str = "Es läuft schon eine Umwandlung oder ein Training. Bitte warten oder dort abbrechen.";
 
 /// Führt einen Motor-Befehl aus und gibt alle Ereignisse zurück.
 /// Ein `error`-Ereignis wird zum Fehler.
@@ -77,11 +78,17 @@ fn run_inner(
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
 
+    // Immer nur eine Umwandlung oder ein Training zur Zeit: teilt sich Grafikkarte und Abbruch-Knopf
+    let mut running = JOB.lock().unwrap();
+    if job && running.is_some() {
+        return Err(BUSY_MESSAGE.to_string());
+    }
     let mut child = command.spawn().map_err(|e| format!("Motor startet nicht: {e}"))?;
     if job {
         CANCELLED.store(false, Ordering::SeqCst);
-        *JOB.lock().unwrap() = Some(child.id());
+        *running = Some(child.id());
     }
+    drop(running);
     // stderr nebenher leeren, sonst blockiert der Motor bei viel Bibliotheks-Ausgabe
     let mut stderr = child.stderr.take().expect("stderr umgeleitet");
     let stderr_reader = std::thread::spawn(move || {
@@ -150,6 +157,7 @@ mod tests {
             assert!(started.elapsed().as_secs() < 10, "Motor startet nicht");
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
+        assert_eq!(run_job(&["info"], |_| {}).unwrap_err(), BUSY_MESSAGE, "zweiter Auftrag muss warten");
         assert!(cancel());
         assert_eq!(worker.join().unwrap().unwrap_err(), CANCELLED_MESSAGE);
     }

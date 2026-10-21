@@ -675,3 +675,42 @@ input[type="text"]:focus {
   color: var(--accent);
   font-weight: 700;
 }
+
+/* Stimme trainieren */
+.train-files {
+  margin-top: 12px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.train-files li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 4px 4px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button.small-button {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.tip {
+  margin-top: 12px;
+}
+
+.choice small {
+  font-weight: 400;
+}
+
+.notice.done {
+  margin-top: 14px;
+  border-style: solid;
+  border-color: #1f9d55;
+}

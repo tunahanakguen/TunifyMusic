@@ -6,12 +6,11 @@ Datei → [Instrumental entfernen] → [Hall/Echo entfernen] → [Rauschen reduz
 
 import os
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-from . import protocol
+from . import proc, protocol
 
 ENGINE_DIR = Path(__file__).resolve().parent.parent
 APPLIO_DIR = ENGINE_DIR / "vendor" / "applio"
@@ -74,14 +73,14 @@ def _peak_db(path: Path) -> float:
 
 
 def _to_wav(source: Path, target: Path) -> None:
-    subprocess.run(
+    proc.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), "-ar", "44100", "-ac", "2", str(target)],
         check=True,
     )
 
 
 def _mix(vocals: Path, instrumental: Path, target: Path) -> None:
-    subprocess.run(
+    proc.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(vocals), "-i", str(instrumental),
          "-filter_complex", "amix=inputs=2:duration=longest:normalize=0", str(target)],
         check=True,
@@ -166,7 +165,7 @@ def convert(args) -> None:
         if out.suffix.lower() == ".wav":
             shutil.copyfile(converted, out)
         else:
-            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(converted), str(out)], check=True)
+            proc.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(converted), str(out)], check=True)
 
     protocol.progress("done", 100, "Fertig")
     protocol.emit("result", output=str(out))

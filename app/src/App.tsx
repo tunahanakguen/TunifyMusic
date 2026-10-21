@@ -4,6 +4,7 @@ import { ThemeChoice, useTheme } from "./theme";
 import ConvertPage from "./ConvertPage";
 import HistoryPage from "./HistoryPage";
 import VoicesPage from "./VoicesPage";
+import TrainPage from "./TrainPage";
 import "./App.css";
 
 type EngineInfo = {
@@ -18,7 +19,7 @@ const AREAS = [
   { id: "start", label: "Start", phase: "" },
   { id: "convert", label: "Stimme umwandeln", phase: "" },
   { id: "voices", label: "Stimmen", phase: "" },
-  { id: "train", label: "Stimme trainieren", phase: "Phase 4" },
+  { id: "train", label: "Stimme trainieren", phase: "" },
   { id: "song", label: "Lied erzeugen", phase: "Phase 5" },
   { id: "instrumental", label: "Instrumental erzeugen", phase: "Phase 5" },
   { id: "history", label: "Verlauf", phase: "" },
@@ -159,7 +160,7 @@ export default function App() {
               setArea("convert");
             }}
           />
-        ) : (
+        ) : area === "start" ? (
           <>
             <h1>Willkommen</h1>
             <p className="muted">
@@ -168,7 +169,15 @@ export default function App() {
             <button onClick={() => setArea("convert")}>Stimme umwandeln</button>
             <EngineStatus />
           </>
-        )}
+        ) : null}
+        {/* immer da, nur versteckt: ein Training läuft weiter, während man andere Seiten nutzt */}
+        <TrainPage
+          active={area === "train"}
+          onUse={(voice) => {
+            setHandoff({ voice, n: (handoff?.n ?? 0) + 1 });
+            setArea("convert");
+          }}
+        />
       </main>
     </div>
   );
