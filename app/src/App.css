@@ -593,3 +593,85 @@ button.play {
 .empty {
   margin-top: 24px;
 }
+
+/* Stimmen */
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.notice p {
+  margin: 0;
+}
+
+.choice.add {
+  color: var(--muted);
+  border-style: dashed;
+}
+
+details.advanced {
+  margin-top: 18px;
+}
+
+details.advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+details.advanced input[type="range"] {
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--accent);
+}
+
+input[type="text"] {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  width: 100%;
+}
+
+input[type="text"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.import-form {
+  display: grid;
+  gap: 8px;
+  max-width: 480px;
+  margin-top: 14px;
+}
+
+.file-list {
+  margin: 0 0 6px;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.small {
+  font-size: 12px;
+  margin: 0;
+}
+
+.voice-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}

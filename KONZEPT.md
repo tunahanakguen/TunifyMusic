@@ -116,6 +116,8 @@ TunifyMusic/
 1. ~~**Programmrahmen**~~: entschieden am 20.10.2026 → **Tauri 2 + React + Python-Motor**, später ONNX in Rust
 2. ~~**Motor**~~: entschieden am 20.10.2026 → **Applio 3.7.0** (MIT, fest auf diese Version, in `engine/vendor`) für RVC-Umwandlung und -Training + **python-audio-separator 0.47.1** (BS-Roformer, UVR-DeEcho-DeReverb, UVR-DeNoise), angesteuert vom eigenen Paket `tunify_engine`
 3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
+   Stand 21.10.2026: Die App bringt keine Stimmen mit; man importiert eigene .pth/.index/.zip (Hinweis auf
+   Rechte/Einwilligung im Import-Dialog). Ob Tunify Music selbst Stimmen mitliefert, ist noch offen.
 4. **Umfang der ersten Version**: nur „Stimme umwandeln“ (Empfehlung) oder gleich mit Training bzw. Lied erzeugen?
 5. **Spuren trennen**: Die Trennung von Gesang und Begleitung braucht Tunify Music ohnehin. Soll es zusätzlich einen
    eigenen Bereich für vier Spuren geben (Gesang, Schlagzeug, Bass, Rest) wie Musicfys Stem Splitter, oder nicht?
@@ -128,7 +130,7 @@ TunifyMusic/
 | 0 | Informationen sammeln, Entscheidungen treffen ✓ |
 | 1 | Werkzeuge installieren (Rust, Build Tools, uv/Python). Python-Motor: PyTorch (CUDA 12.8) + RVC, ein Lied per Kommandozeile umwandeln. Leeres Tauri-2-Gerüst mit TUNAS-Logo ✓ (20.10.2026) |
 | 2 | Klavier-Modell trainieren und Qualität prüfen ✓ (21.10.2026) → Ergebnis: Klavier über den **Noten-Modus**, RVC nur für Stimme → Stimme |
-| 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek |
+| 3 | App-Oberfläche „Stimme umwandeln“: Upload/Aufnahme, drei Schalter, Pitch/Formant, Cover-Mix, Verlauf, Bibliothek ✓ (21.10.2026): Instrument (Noten-Modus, 18 Instrumente) und Stimme (RVC), Mikrofon-Aufnahme, WAV/MP3/FLAC, MIDI, Abbrechen, Verlauf, Stimmen-Bibliothek mit Import (.pth/.index/.zip) |
 | 4 | „Stimme trainieren“ in der App |
 | 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme |
 | 6 | Weitere Instrumente, Installer |

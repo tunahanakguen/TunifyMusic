@@ -1,4 +1,5 @@
 mod engine;
+mod voices;
 
 use std::path::{Path, PathBuf};
 
@@ -165,6 +166,114 @@ async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Resul
     .map_err(|e| e.to_string())?
 }
 
+/// Stimmen-Bibliothek im App-Datenordner (%APPDATA%\de.tunas.tunifymusic\voices)
+fn voices_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("voices");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Stimmen-Ordner nicht anlegbar: {e}"))?;
+    Ok(dir)
+}
+
+#[tauri::command]
+fn list_voices(app: AppHandle) -> Result<Vec<voices::Voice>, String> {
+    Ok(voices::list(&voices_dir(&app)?))
+}
+
+/// Kopiert lange: im Hintergrund, damit das Fenster nicht hängt.
+#[tauri::command]
+async fn import_voice(app: AppHandle, name: String, files: Vec<String>) -> Result<voices::Voice, String> {
+    let dir = voices_dir(&app)?;
+    tauri::async_runtime::spawn_blocking(move || voices::import(&dir, &name, &files))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn rename_voice(app: AppHandle, id: String, name: String) -> Result<voices::Voice, String> {
+    voices::rename(&voices_dir(&app)?, &id, &name)
+}
+
+#[tauri::command]
+fn delete_voice(app: AppHandle, id: String) -> Result<(), String> {
+    voices::delete(&voices_dir(&app)?, &id)
+}
+
+/// Einstellungen für „Stimme umwandeln“ → andere Stimme (RVC).
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct VoiceRequest {
+    input: String,
+    voice: String,
+    pitch: i32,
+    formant: f64,
+    index_rate: f64,
+    protect: f64,
+    isolate_vocals: bool,
+    dereverb: bool,
+    denoise: bool,
+    mix_instrumental: bool,
+    format: String,
+}
+
+/// Zeichen, die in Windows-Dateinamen verboten sind
+fn file_label(name: &str) -> String {
+    name.chars().map(|c| if r#"\/:*?"<>|"#.contains(c) { '_' } else { c }).collect()
+}
+
+/// Stimme → Stimme mit RVC. Fortschritt kommt als Ereignis `engine-progress`.
+#[tauri::command]
+async fn convert_voice(app: AppHandle, request: VoiceRequest) -> Result<serde_json::Value, String> {
+    if !FORMATS.contains(&request.format.as_str()) {
+        return Err(format!("Unbekanntes Format: {}", request.format));
+    }
+    let voice = voices::get(&voices_dir(&app)?, &request.voice)?;
+    let out = unique_output(&output_dir(&app)?, &request.input, &file_label(&voice.name), &request.format);
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = out.to_string_lossy().to_string();
+        let (pitch, formant) = (request.pitch.to_string(), request.formant.to_string());
+        let (index_rate, protect) = (request.index_rate.to_string(), request.protect.to_string());
+        let mut args = vec![
+            "convert",
+            request.input.as_str(),
+            "--model",
+            voice.model.as_str(),
+            "--out",
+            out.as_str(),
+            "--pitch",
+            pitch.as_str(),
+            "--formant",
+            formant.as_str(),
+            "--protect",
+            protect.as_str(),
+        ];
+        if let Some(index) = &voice.index {
+            args.extend(["--index", index.as_str(), "--index-rate", index_rate.as_str()]);
+        }
+        for (on, flag) in [
+            (request.isolate_vocals, "--isolate-vocals"),
+            (request.dereverb, "--dereverb"),
+            (request.denoise, "--denoise"),
+            (request.mix_instrumental, "--mix-instrumental"),
+        ] {
+            if on {
+                args.push(flag);
+            }
+        }
+        let events = engine::run_job(&args, |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("engine-progress", event);
+            }
+        })?;
+        let mut result = events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())?;
+        result["voice"] = voice.name.into();
+        Ok(result)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Bricht die laufende Umwandlung ab.
 #[tauri::command]
 fn cancel_conversion() -> bool {
@@ -265,6 +374,11 @@ pub fn run() {
             list_instruments,
             save_recording,
             convert_instrument,
+            list_voices,
+            import_voice,
+            rename_voice,
+            delete_voice,
+            convert_voice,
             cancel_conversion,
             list_history,
             output_folder

@@ -4,14 +4,21 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
-
 import Recorder from "./Recorder";
+import { Voice } from "./VoicesPage";
 
 type Progress = { step: string; percent: number; message: string };
-type Result = { output: string; notes: number; instrument: string; octave: number; midi?: string };
+type Result = { output: string; notes?: number; instrument?: string; octave?: number; midi?: string; voice?: string };
 type Instrument = { id: string; label: string; available: boolean };
+type Mode = "instrument" | "voice";
+type Format = "wav" | "mp3" | "flac";
 
 const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus", "webm", "mp4"];
+const FORMATS: { id: Format; label: string }[] = [
+  { id: "wav", label: "WAV" },
+  { id: "mp3", label: "MP3" },
+  { id: "flac", label: "FLAC" },
+];
 
 function fileName(path: string) {
   return path.split(/[\\/]/).pop() ?? path;
@@ -21,41 +28,57 @@ function isRecording(path: string) {
   return /[\\/]Tunify Music[\\/]Aufnahmen[\\/]/.test(path);
 }
 
-type Format = "wav" | "mp3" | "flac";
-const FORMATS: { id: Format; label: string }[] = [
-  { id: "wav", label: "WAV" },
-  { id: "mp3", label: "MP3" },
-  { id: "flac", label: "FLAC" },
-];
-
-function loadFormat(): Format {
+/** Kleine Einstellungen pro Gerät merken; ohne Speicher gelten die Vorgaben. */
+function load<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
-    const saved = localStorage.getItem("tunify.format");
-    return FORMATS.some((f) => f.id === saved) ? (saved as Format) : "wav";
+    const saved = localStorage.getItem(key);
+    return allowed.includes(saved as T) ? (saved as T) : fallback;
   } catch {
-    return "wav";
+    return fallback;
   }
 }
 
-function saveFormat(format: Format) {
+function save(key: string, value: string) {
   try {
-    localStorage.setItem("tunify.format", format);
+    localStorage.setItem(key, value);
   } catch {
-    // nur eine Bequemlichkeit – ohne Speicher gilt beim nächsten Start wieder WAV
+    // nur eine Bequemlichkeit
   }
 }
 
-export default function ConvertPage({ initialInput }: { initialInput: string | null }) {
+function signed(n: number) {
+  return n > 0 ? `+${n}` : String(n);
+}
+
+type Props = {
+  initialInput: string | null;
+  initialVoice: string | null;
+  onOpenVoices: () => void;
+};
+
+export default function ConvertPage({ initialInput, initialVoice, onOpenVoices }: Props) {
   const [input, setInput] = useState<string | null>(initialInput);
+  const [mode, setMode] = useState<Mode>(() =>
+    initialVoice ? "voice" : load("tunify.mode", ["instrument", "voice"] as const, "instrument"),
+  );
+  // Instrument (Noten-Modus)
   const [instruments, setInstruments] = useState<Instrument[]>([{ id: "klavier", label: "Klavier", available: true }]);
   const [instrument, setInstrument] = useState("klavier");
   const [transpose, setTranspose] = useState(0);
+  const [midi, setMidi] = useState(false);
+  // Stimme (RVC)
+  const [voices, setVoices] = useState<Voice[] | null>(null);
+  const [voice, setVoice] = useState<string | null>(initialVoice);
+  const [pitch, setPitch] = useState(0);
+  const [formant, setFormant] = useState(1);
+  const [indexRate, setIndexRate] = useState(0.3);
+  const [protect, setProtect] = useState(0.33);
+  // gemeinsam
   const [isolateVocals, setIsolateVocals] = useState(false);
   const [dereverb, setDereverb] = useState(false);
   const [denoise, setDenoise] = useState(false);
   const [mixInstrumental, setMixInstrumental] = useState(false);
-  const [format, setFormat] = useState<Format>(() => loadFormat());
-  const [midi, setMidi] = useState(false);
+  const [format, setFormat] = useState<Format>(() => load("tunify.format", ["wav", "mp3", "flac"] as const, "wav"));
   const [busy, setBusy] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
@@ -67,6 +90,12 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
     invoke<Instrument[]>("list_instruments")
       .then(setInstruments)
       .catch(() => {});
+    invoke<Voice[]>("list_voices")
+      .then((list) => {
+        setVoices(list);
+        setVoice((current) => (current && list.some((v) => v.id === current) ? current : (list[0]?.id ?? null)));
+      })
+      .catch(() => setVoices([]));
   }, []);
 
   useEffect(() => {
@@ -113,29 +142,32 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
     if (typeof file === "string") choose(file);
   }
 
+  const selectedVoice = voices?.find((v) => v.id === voice) ?? null;
+  const ready = !!input && (mode === "instrument" || !!selectedVoice);
+
   async function convert() {
-    if (!input) return;
+    if (!input || !ready) return;
     setBusy(true);
     setError(null);
     setCancelled(false);
     setResult(null);
     setProgress({ step: "start", percent: 0, message: "Motor starten" });
+    const shared = { input, isolateVocals, dereverb, denoise, mixInstrumental: isolateVocals && mixInstrumental, format };
     try {
       setResult(
-        await invoke<Result>("convert_instrument", {
-          request: {
-            input,
-            instrument,
-            label: instruments.find((i) => i.id === instrument)?.label ?? instrument,
-            transpose,
-            isolateVocals,
-            dereverb,
-            denoise,
-            mixInstrumental: isolateVocals && mixInstrumental,
-            format,
-            midi,
-          },
-        }),
+        mode === "instrument"
+          ? await invoke<Result>("convert_instrument", {
+              request: {
+                ...shared,
+                instrument,
+                label: instruments.find((i) => i.id === instrument)?.label ?? instrument,
+                transpose,
+                midi,
+              },
+            })
+          : await invoke<Result>("convert_voice", {
+              request: { ...shared, voice, pitch, formant, indexRate, protect },
+            }),
       );
     } catch (e) {
       if (String(e) === "Abgebrochen") setCancelled(true);
@@ -149,7 +181,10 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
   return (
     <>
       <h1>Stimme umwandeln</h1>
-      <p className="muted">Sing oder summ eine Melodie – Tunify Music spielt sie auf einem echten Instrument nach.</p>
+      <p className="muted">
+        Sing oder summ eine Melodie – Tunify Music spielt sie auf einem echten Instrument nach oder singt sie mit einer
+        anderen Stimme.
+      </p>
 
       <section className="card wide">
         <h2>1 · Aufnahme</h2>
@@ -173,46 +208,181 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
       </section>
 
       <section className="card wide">
-        <h2>2 · Klang</h2>
-        <div className="choices" role="radiogroup" aria-label="Instrument">
-          {instruments.map((i) => (
-            <button
-              key={i.id}
-              role="radio"
-              aria-checked={i.id === instrument}
-              className={`choice ${i.id === instrument ? "active" : ""}`}
-              disabled={!i.available || busy}
-              title={i.available ? undefined : "Klangsatz fehlt – tools\\setup-instruments.ps1 ausführen"}
-              onClick={() => setInstrument(i.id)}
-            >
-              {i.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="field">
-          <label htmlFor="transpose">
-            Tonlage <strong>{transpose > 0 ? `+${transpose}` : transpose}</strong> Halbtöne
-            <span className="muted"> · zusätzlich legt Tunify die Melodie automatisch in die Lage des Instruments</span>
-          </label>
-          <div className="range-row">
-            <button className="ghost" onClick={() => setTranspose(Math.max(-24, transpose - 12))} disabled={busy}>
-              − Oktave
-            </button>
-            <input
-              id="transpose"
-              type="range"
-              min={-24}
-              max={24}
-              value={transpose}
-              onChange={(e) => setTranspose(Number(e.target.value))}
-              disabled={busy}
-            />
-            <button className="ghost" onClick={() => setTranspose(Math.min(24, transpose + 12))} disabled={busy}>
-              + Oktave
-            </button>
+        <div className="card-head">
+          <h2>2 · Klang</h2>
+          <div className="segmented" role="radiogroup" aria-label="Umwandeln in">
+            {(
+              [
+                ["instrument", "Instrument"],
+                ["voice", "Stimme"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={mode === id}
+                className={mode === id ? "active" : ""}
+                disabled={busy}
+                onClick={() => {
+                  setMode(id);
+                  save("tunify.mode", id);
+                  setResult(null);
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
+
+        {mode === "instrument" ? (
+          <>
+            <div className="choices" role="radiogroup" aria-label="Instrument">
+              {instruments.map((i) => (
+                <button
+                  key={i.id}
+                  role="radio"
+                  aria-checked={i.id === instrument}
+                  className={`choice ${i.id === instrument ? "active" : ""}`}
+                  disabled={!i.available || busy}
+                  title={i.available ? undefined : "Klangsatz fehlt – tools\\setup-instruments.ps1 ausführen"}
+                  onClick={() => setInstrument(i.id)}
+                >
+                  {i.label}
+                </button>
+              ))}
+            </div>
+            <div className="field">
+              <label htmlFor="transpose">
+                Tonlage <strong>{signed(transpose)}</strong> Halbtöne
+                <span className="muted"> · zusätzlich legt Tunify die Melodie automatisch in die Lage des Instruments</span>
+              </label>
+              <div className="range-row">
+                <button className="ghost" onClick={() => setTranspose(Math.max(-24, transpose - 12))} disabled={busy}>
+                  − Oktave
+                </button>
+                <input
+                  id="transpose"
+                  type="range"
+                  min={-24}
+                  max={24}
+                  value={transpose}
+                  onChange={(e) => setTranspose(Number(e.target.value))}
+                  disabled={busy}
+                />
+                <button className="ghost" onClick={() => setTranspose(Math.min(24, transpose + 12))} disabled={busy}>
+                  + Oktave
+                </button>
+              </div>
+            </div>
+          </>
+        ) : voices && voices.length === 0 ? (
+          <div className="notice">
+            <p>Noch keine Stimmen in deiner Bibliothek.</p>
+            <button onClick={onOpenVoices}>Stimme importieren</button>
+          </div>
+        ) : (
+          <>
+            <div className="choices" role="radiogroup" aria-label="Stimme">
+              {(voices ?? []).map((v) => (
+                <button
+                  key={v.id}
+                  role="radio"
+                  aria-checked={v.id === voice}
+                  className={`choice ${v.id === voice ? "active" : ""}`}
+                  disabled={busy}
+                  onClick={() => setVoice(v.id)}
+                >
+                  {v.name}
+                </button>
+              ))}
+              <button className="choice add" onClick={onOpenVoices} disabled={busy}>
+                + Stimmen verwalten
+              </button>
+            </div>
+            <div className="field">
+              <label htmlFor="pitch">
+                Tonhöhe <strong>{signed(pitch)}</strong> Halbtöne
+                <span className="muted"> · Männer- zu Frauenstimme etwa +12, umgekehrt −12</span>
+              </label>
+              <div className="range-row">
+                <button className="ghost" onClick={() => setPitch(Math.max(-12, pitch - 12))} disabled={busy}>
+                  − Oktave
+                </button>
+                <input
+                  id="pitch"
+                  type="range"
+                  min={-12}
+                  max={12}
+                  value={pitch}
+                  onChange={(e) => setPitch(Number(e.target.value))}
+                  disabled={busy}
+                />
+                <button className="ghost" onClick={() => setPitch(Math.min(12, pitch + 12))} disabled={busy}>
+                  + Oktave
+                </button>
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="formant">
+                Klangfarbe <strong>{formant.toFixed(2).replace(".", ",")}</strong>
+                <span className="muted"> · unter 1 dunkler und größer, über 1 heller und kleiner</span>
+              </label>
+              <div className="range-row">
+                <input
+                  id="formant"
+                  type="range"
+                  min={0.5}
+                  max={2}
+                  step={0.05}
+                  value={formant}
+                  onChange={(e) => setFormant(Number(e.target.value))}
+                  disabled={busy}
+                />
+                <button className="ghost" onClick={() => setFormant(1)} disabled={busy || formant === 1}>
+                  Zurücksetzen
+                </button>
+              </div>
+            </div>
+            <details className="advanced">
+              <summary>Feineinstellungen</summary>
+              <div className="field">
+                <label htmlFor="index-rate">
+                  Stimm-Ähnlichkeit (Index) <strong>{Math.round(indexRate * 100)} %</strong>
+                  <span className="muted">
+                    {selectedVoice?.index ? " · höher klingt mehr nach der Zielstimme, aber weniger deutlich" : " · diese Stimme hat keinen Index"}
+                  </span>
+                </label>
+                <input
+                  id="index-rate"
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={indexRate}
+                  onChange={(e) => setIndexRate(Number(e.target.value))}
+                  disabled={busy || !selectedVoice?.index}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="protect">
+                  Atmen und Konsonanten schützen <strong>{Math.round(protect * 100)} %</strong>
+                  <span className="muted"> · höher gegen verwaschene S- und Atemlaute, 50 % = aus</span>
+                </label>
+                <input
+                  id="protect"
+                  type="range"
+                  min={0}
+                  max={0.5}
+                  step={0.01}
+                  value={protect}
+                  onChange={(e) => setProtect(Number(e.target.value))}
+                  disabled={busy}
+                />
+              </div>
+            </details>
+          </>
+        )}
 
         <div className="toggles">
           <label>
@@ -248,7 +418,7 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
                 Abbrechen
               </button>
             )}
-            <button onClick={convert} disabled={!input || busy}>
+            <button onClick={convert} disabled={!ready || busy}>
               {busy ? "Läuft …" : "Umwandeln"}
             </button>
           </div>
@@ -263,7 +433,7 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
                 className={format === f.id ? "active" : ""}
                 onClick={() => {
                   setFormat(f.id);
-                  saveFormat(f.id);
+                  save("tunify.format", f.id);
                 }}
                 disabled={busy}
               >
@@ -271,10 +441,12 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
               </button>
             ))}
           </div>
-          <label>
-            <input type="checkbox" checked={midi} onChange={(e) => setMidi(e.target.checked)} disabled={busy} />
-            Noten zusätzlich als MIDI speichern
-          </label>
+          {mode === "instrument" && (
+            <label>
+              <input type="checkbox" checked={midi} onChange={(e) => setMidi(e.target.checked)} disabled={busy} />
+              Noten zusätzlich als MIDI speichern
+            </label>
+          )}
         </div>
         {progress && (
           <div className="progress">
@@ -289,9 +461,11 @@ export default function ConvertPage({ initialInput }: { initialInput: string | n
         {result && (
           <div className="result" ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "end" })}>
             <p>
-              <strong>{fileName(result.output)}</strong> <span className="muted">
-                · {result.notes} Töne erkannt
-                {result.octave !== 0 &&
+              <strong>{fileName(result.output)}</strong>{" "}
+              <span className="muted">
+                {result.voice && `· gesungen von ${result.voice}`}
+                {result.notes !== undefined && `· ${result.notes} Töne erkannt`}
+                {!!result.octave &&
                   ` · automatisch ${Math.abs(result.octave)} Oktave${Math.abs(result.octave) > 1 ? "n" : ""} ${
                     result.octave > 0 ? "höher" : "tiefer"
                   } (Lage ${result.instrument})`}

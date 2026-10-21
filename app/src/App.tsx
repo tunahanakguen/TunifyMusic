@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ThemeChoice, useTheme } from "./theme";
 import ConvertPage from "./ConvertPage";
 import HistoryPage from "./HistoryPage";
+import VoicesPage from "./VoicesPage";
 import "./App.css";
 
 type EngineInfo = {
@@ -16,7 +17,7 @@ type EngineInfo = {
 const AREAS = [
   { id: "start", label: "Start", phase: "" },
   { id: "convert", label: "Stimme umwandeln", phase: "" },
-  { id: "voices", label: "Stimmen", phase: "Phase 3" },
+  { id: "voices", label: "Stimmen", phase: "" },
   { id: "train", label: "Stimme trainieren", phase: "Phase 4" },
   { id: "song", label: "Lied erzeugen", phase: "Phase 5" },
   { id: "instrumental", label: "Instrumental erzeugen", phase: "Phase 5" },
@@ -103,8 +104,9 @@ function ThemeSwitch() {
 
 export default function App() {
   const [area, setArea] = useState("start");
-  // aus dem Verlauf heraus „Umwandeln“: Datei vorwählen; der Zähler erzwingt eine frische Seite
-  const [handoff, setHandoff] = useState<{ path: string; n: number } | null>(null);
+  // aus Verlauf oder Stimmen heraus „Umwandeln“/„Benutzen“: Datei bzw. Stimme vorwählen;
+  // der Zähler erzwingt eine frische Seite
+  const [handoff, setHandoff] = useState<{ path?: string; voice?: string; n: number } | null>(null);
   return (
     <div className="shell">
       <header className="topbar">
@@ -134,7 +136,22 @@ export default function App() {
       </nav>
       <main className="content">
         {area === "convert" ? (
-          <ConvertPage key={handoff?.n ?? 0} initialInput={handoff?.path ?? null} />
+          <ConvertPage
+            key={handoff?.n ?? 0}
+            initialInput={handoff?.path ?? null}
+            initialVoice={handoff?.voice ?? null}
+            onOpenVoices={() => {
+              setHandoff(null);
+              setArea("voices");
+            }}
+          />
+        ) : area === "voices" ? (
+          <VoicesPage
+            onUse={(voice) => {
+              setHandoff({ voice, n: (handoff?.n ?? 0) + 1 });
+              setArea("convert");
+            }}
+          />
         ) : area === "history" ? (
           <HistoryPage
             onConvert={(path) => {
