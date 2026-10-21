@@ -100,6 +100,7 @@ def generate(dit, lm, job: dict) -> dict:
         keyscale=job.get("keyscale") or "",
         duration=float(job.get("duration") or -1),
         seed=int(job.get("seed", -1)),
+        reference_audio=job.get("reference_audio") or None,
     )
     seed = int(job.get("seed", -1))
     # generate_music wertet nur config.seeds aus, params.seed allein wird ignoriert

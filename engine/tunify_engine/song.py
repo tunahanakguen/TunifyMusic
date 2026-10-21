@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 
 from . import proc, protocol
-from .convert import ENGINE_DIR, VOCALS_MODEL, _applio, _mix, _separate
+from .convert import ENGINE_DIR, VOCALS_MODEL, _applio, _mix, _separate, _to_wav
 
 ACE_PYTHON = ENGINE_DIR / "vendor" / "ace-step" / ".venv" / "Scripts" / "python.exe"
 WORKER = ENGINE_DIR / "acestep_worker.py"
@@ -104,14 +104,23 @@ def song(args) -> None:
         raise ValueError("--duration muss zwischen 10 und 480 Sekunden liegen")
     if args.voice_model and args.instrumental:
         raise ValueError("Eine eigene Stimme geht nur bei Liedern mit Gesang")
+    reference = Path(args.reference).resolve() if args.reference else None
+    if reference and not reference.exists():
+        raise FileNotFoundError(f"Referenz-Lied fehlt: {reference}")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="tunify_song_") as tmp:
         work = Path(tmp)
+        if reference:
+            # ACE-Step liest nicht jedes Format (z. B. M4A); als WAV geht es immer
+            protocol.progress("reference", 1, "Referenz-Lied einlesen")
+            _to_wav(reference, work / "reference.wav")
+            reference = work / "reference.wav"
         result = _generate({
             "caption": args.caption, "lyrics": args.lyrics or "", "instrumental": args.instrumental,
             "duration": args.duration, "bpm": args.bpm, "keyscale": args.key or "",
             "language": args.language or "unknown", "seed": args.seed, "out_dir": str(work),
+            "reference_audio": str(reference) if reference else "",
         }, share=80 if args.voice_model else 97)
         current = Path(result["output"])
         if args.voice_model:

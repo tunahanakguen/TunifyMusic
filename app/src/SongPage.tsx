@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { Voice } from "./VoicesPage";
 
@@ -80,6 +81,7 @@ export default function SongPage({ instrumental, active }: Props) {
   const [bpm, setBpm] = useState("");
   const [key, setKey] = useState("");
   const [seed, setSeed] = useState("");
+  const [reference, setReference] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [result, setResult] = useState<Result | null>(null);
@@ -132,6 +134,7 @@ export default function SongPage({ instrumental, active }: Props) {
             voice: !instrumental && voice ? voice : null,
             pitch,
             format: loadFormat(),
+            reference,
           },
         }),
       );
@@ -143,6 +146,15 @@ export default function SongPage({ instrumental, active }: Props) {
       busyRef.current = false;
       setProgress(null);
     }
+  }
+
+  async function pickReference() {
+    const file = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Audio", extensions: ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus", "webm"] }],
+    });
+    if (typeof file === "string") setReference(file);
   }
 
   const ready = caption.trim() !== "" || (!instrumental && lyrics.trim() !== "");
@@ -173,6 +185,25 @@ export default function SongPage({ instrumental, active }: Props) {
               {s}
             </button>
           ))}
+        </div>
+        <div className="field reference">
+          <span>
+            Stilvorlage <span className="muted">(optional)</span>
+          </span>
+          <div className="range-row">
+            <button className="ghost" onClick={pickReference} disabled={busy}>
+              {reference ? fileName(reference) : "Referenz-Lied wählen …"}
+            </button>
+            {reference && (
+              <button className="ghost" aria-label="Stilvorlage entfernen" onClick={() => setReference(null)} disabled={busy}>
+                Entfernen
+              </button>
+            )}
+          </div>
+          <p className="muted small tip">
+            Tunify orientiert sich an Klang und Stil dieses Liedes – es wird nicht kopiert. Nur Lieder verwenden, an denen
+            du die Rechte hast.
+          </p>
         </div>
       </section>
 

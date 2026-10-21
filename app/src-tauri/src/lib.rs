@@ -20,6 +20,26 @@ async fn engine_info() -> Result<serde_json::Value, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Aufnahmen fürs Training bewerten. Eigener kurzer Motor-Prozess, damit es auch während
+/// eines laufenden Trainings oder einer Umwandlung geht.
+#[tauri::command]
+async fn analyze_recordings(files: Vec<String>) -> Result<serde_json::Value, String> {
+    if files.is_empty() {
+        return Ok(serde_json::json!([]));
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut args = vec!["analyze"];
+        args.extend(files.iter().map(String::as_str));
+        engine::run(&args)?
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .map(|e| e["files"].clone())
+            .ok_or_else(|| "Motor hat keine Bewertung gemeldet".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Instrumente des Noten-Modus (id, label, available).
 #[tauri::command]
 async fn list_instruments() -> Result<serde_json::Value, String> {
@@ -385,6 +405,9 @@ struct SongRequest {
     voice: Option<String>,
     pitch: i32,
     format: String,
+    /// Referenz-Lied als Vorlage für Klang und Stil
+    #[serde(default)]
+    reference: Option<String>,
 }
 
 /// Dateiname aus der Beschreibung: die ersten Wörter, ohne verbotene Zeichen
@@ -447,6 +470,9 @@ async fn generate_song(app: AppHandle, request: SongRequest) -> Result<serde_jso
         }
         if let Some(bpm) = &bpm {
             args.extend(["--bpm", bpm.as_str()]);
+        }
+        if let Some(reference) = request.reference.as_deref().filter(|r| !r.is_empty()) {
+            args.extend(["--reference", reference]);
         }
         if let Some(voice) = &voice {
             args.extend(["--voice-model", voice.model.as_str(), "--pitch", pitch.as_str()]);
@@ -566,6 +592,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             engine_info,
             list_instruments,
+            analyze_recordings,
             save_recording,
             convert_instrument,
             list_voices,

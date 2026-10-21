@@ -714,6 +714,36 @@ input[type="search"]:focus {
   color: var(--text);
 }
 
+.train-file {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px 0;
+}
+
+.grade {
+  display: inline-block;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.grade.brauchbar {
+  color: var(--muted);
+}
+
+.grade.schlecht {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.train-total {
+  margin: 10px 0 0;
+}
+
 button.small-button {
   padding: 3px 10px;
   font-size: 12px;

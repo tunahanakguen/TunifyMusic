@@ -7,6 +7,7 @@ import Recorder from "./Recorder";
 import { Voice } from "./VoicesPage";
 
 type Progress = { step: string; percent: number; message: string };
+type Rating = { path: string; grade: "gut" | "brauchbar" | "schlecht"; hints: string[]; seconds: number };
 
 const AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "flac", "ogg", "aac", "opus", "webm", "mp4"];
 
@@ -15,6 +16,10 @@ const PRESETS = [
   { epochs: 200, label: "Standard", hint: "wie Musicfy" },
   { epochs: 400, label: "Gründlich", hint: "für viel Material" },
 ];
+
+function minutes(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, "0")}`;
+}
 
 function fileName(path: string) {
   return path.split(/[\\/]/).pop() ?? path;
@@ -39,6 +44,8 @@ export default function TrainPage({ active, onUse }: Props) {
   const [cancelled, setCancelled] = useState(false);
   const [trained, setTrained] = useState<Voice | null>(null);
   const [dragging, setDragging] = useState(false);
+  // Bewertung je Datei; fehlt ein Eintrag, wird die Datei noch geprüft
+  const [ratings, setRatings] = useState<Record<string, Rating>>({});
   const activeRef = useRef(active);
   activeRef.current = active;
 
@@ -46,7 +53,15 @@ export default function TrainPage({ active, onUse }: Props) {
     setInputs((current) => [...current, ...paths.filter((p) => !current.includes(p))]);
     setTrained(null);
     setError(null);
+    const fresh = paths.filter((p) => !(p in ratings));
+    if (fresh.length === 0) return;
+    invoke<Rating[]>("analyze_recordings", { files: fresh })
+      .then((list) => setRatings((current) => ({ ...current, ...Object.fromEntries(list.map((r, i) => [fresh[i], r])) })))
+      .catch(() => {});
   }
+
+  const rated = inputs.map((p) => ratings[p]).filter(Boolean);
+  const totalSeconds = rated.reduce((sum, r) => sum + r.seconds, 0);
 
   useEffect(() => {
     let unlistenProgress: (() => void) | undefined;
@@ -138,7 +153,20 @@ export default function TrainPage({ active, onUse }: Props) {
           <ul className="file-list train-files">
             {inputs.map((path) => (
               <li key={path}>
-                <span>{fileName(path)}</span>
+                <div className="train-file">
+                  <span>
+                    {fileName(path)}
+                    {ratings[path] && <span className="muted"> · {minutes(ratings[path].seconds)}</span>}
+                  </span>
+                  {ratings[path] ? (
+                    <span className="muted small">
+                      <span className={`grade ${ratings[path].grade}`}>{ratings[path].grade}</span>
+                      {ratings[path].hints.length > 0 && ` ${ratings[path].hints.join(" · ")}`}
+                    </span>
+                  ) : (
+                    <span className="muted small">wird geprüft …</span>
+                  )}
+                </div>
                 <button
                   className="ghost small-button"
                   aria-label={`${fileName(path)} entfernen`}
@@ -150,6 +178,18 @@ export default function TrainPage({ active, onUse }: Props) {
               </li>
             ))}
           </ul>
+        )}
+        {rated.length > 0 && (
+          <p className={`train-total ${totalSeconds < 30 ? "error" : ""}`}>
+            Zusammen <strong>{minutes(totalSeconds)} min</strong>
+            <span className="muted">
+              {totalSeconds < 30
+                ? " · zu wenig, mindestens 30 Sekunden"
+                : totalSeconds < 600
+                  ? " · reicht zum Ausprobieren, für eine gute Stimme 10–30 Minuten"
+                  : " · gute Menge"}
+            </span>
+          </p>
         )}
         <p className="muted small tip">
           Am besten 10–30 Minuten nur Gesang, ohne Musik und Hall, in verschiedenen Tonhöhen. Ab 30 Sekunden geht es,

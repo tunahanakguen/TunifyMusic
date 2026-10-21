@@ -48,6 +48,9 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Begleitung wieder dazumischen (Cover); nur mit --isolate-vocals")
     conv.add_argument("--instrumental-pitch", type=int, default=0, help="Begleitung um Halbtöne verschieben, -12 … 12")
 
+    an = sub.add_parser("analyze", help="Aufnahmen fürs Training bewerten (Länge, Pegel, Rauschen …)")
+    an.add_argument("inputs", nargs="+", help="Aufnahmen (MP3, WAV, …)")
+
     sub.add_parser("instruments", help="Instrumente des Noten-Modus auflisten")
     notes = sub.add_parser("notes", help="Noten-Modus: Melodie erkennen und mit echtem Instrument nachspielen")
     notes.add_argument("input", help="Eingabedatei (MP3, WAV, …)")
@@ -83,6 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     so.add_argument("--key", default="", help="Tonart, z. B. „C major“; leer = automatisch")
     so.add_argument("--language", default="", help="Sprache des Gesangs, z. B. de, en; leer = automatisch")
     so.add_argument("--seed", type=int, default=-1, help="Zufallszahl; gleiche Zahl = gleiches Lied")
+    so.add_argument("--reference", default="", help="Referenz-Lied als Vorlage für Klang und Stil")
     so.add_argument("--voice-model", default="", help="RVC-Stimme (.pth): Gesang in dieser Stimme")
     so.add_argument("--voice-index", default="", help="Index der Stimme (.index), optional")
     so.add_argument("--pitch", type=int, default=0, help="Tonhöhe der Stimme, -12 … 12")
@@ -104,6 +108,9 @@ def dispatch(args) -> None:
     elif args.command == "instruments":
         from .notes import list_instruments
         list_instruments()
+    elif args.command == "analyze":
+        from .analyze import analyze
+        analyze(args)
     elif args.command == "train":
         from .train import train
         train(args)
