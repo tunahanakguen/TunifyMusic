@@ -16,6 +16,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
+# Fehler als eine lesbare Zeile „@@! <Text>“ auf stderr statt des PowerShell-Fehlerblocks
+trap { [Console]::Error.WriteLine("@@! $($_.Exception.Message)"); exit 1 }
 
 # Python-Pakete haben tief verschachtelte Dateien; ohne „lange Pfade“ in Windows sind 260 Zeichen die Grenze
 $longPaths = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -ErrorAction SilentlyContinue).LongPathsEnabled

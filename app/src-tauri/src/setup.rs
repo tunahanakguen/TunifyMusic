@@ -144,7 +144,7 @@ fn run_script(part: &str, sources: &Path, on_progress: &mut impl FnMut(u32, &str
             }
             tail.push_back(line);
         }
-        tail.into_iter().collect::<Vec<_>>().join(" | ")
+        error_text(&tail.into_iter().collect::<Vec<_>>())
     });
     for line in BufReader::new(child.stdout.take().expect("stdout umgeleitet")).lines().map_while(Result::ok) {
         if let Some((percent, text)) = line.strip_prefix("@@ ").and_then(|rest| rest.split_once(' ')) {
@@ -165,6 +165,20 @@ fn run_script(part: &str, sources: &Path, on_progress: &mut impl FnMut(u32, &str
     }
 }
 
+/// Fehlertext aus den letzten stderr-Zeilen: die Meldung des Skripts („@@! …“) und davor die des Werkzeugs.
+fn error_text(lines: &[String]) -> String {
+    match lines.iter().rposition(|line| line.starts_with("@@! ")) {
+        Some(at) => {
+            let message = &lines[at][4..];
+            match at.checked_sub(1).map(|before| &lines[before]) {
+                Some(tool) if !tool.starts_with("@@! ") => format!("{message} – {tool}"),
+                _ => message.to_string(),
+            }
+        }
+        None => lines.join(" | "),
+    }
+}
+
 static CANCELLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Bricht die Einrichtung ab. Fertige Schritte bleiben, beim nächsten Start geht es dort weiter.
@@ -180,4 +194,17 @@ pub fn cancel() -> bool {
     kill.creation_flags(CREATE_NO_WINDOW);
     let _ = kill.status();
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::error_text;
+
+    #[test]
+    fn fehlertext_mit_werkzeugmeldung() {
+        let lines = ["error: Netz weg".to_string(), "@@! Fehlgeschlagen (2): uv".to_string()];
+        assert_eq!(error_text(&lines), "Fehlgeschlagen (2): uv – error: Netz weg");
+        assert_eq!(error_text(&lines[1..]), "Fehlgeschlagen (2): uv");
+        assert_eq!(error_text(&lines[..1]), "error: Netz weg");
+    }
 }
