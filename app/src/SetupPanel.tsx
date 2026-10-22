@@ -15,7 +15,7 @@ const PARTS = {
   music: {
     title: "Musik erzeugen einrichten",
     text: "Für „Lied erzeugen“ und „Instrumental erzeugen“ braucht Tunify zusätzlich ACE-Step mit eigener Umgebung und Musikmodellen.",
-    size: "ca. 12 GB Download, 16 GB auf der Festplatte · 20–60 Minuten je nach Internet",
+    size: "ca. 12 GB Download, 14 GB auf der Festplatte · 20–60 Minuten je nach Internet",
     button: "Musik erzeugen einrichten",
   },
 };
