@@ -120,6 +120,41 @@ def mix_instrumental(sound: Path, instrumental: Path, semitones: int, work: Path
     return mixed
 
 
+def _save(source: Path, out: Path) -> None:
+    """WAV aus der Arbeit als Ausgabe speichern; andere Formate über FFmpeg."""
+    if out.suffix.lower() == ".wav":
+        shutil.copyfile(source, out)
+    else:
+        proc.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), str(out)], check=True)
+
+
+def separate(args) -> None:
+    """Gesang und Begleitung trennen (wie Musicfys „Vocal Remover“). Mehr Spuren macht ein eigenes Programm."""
+    source = Path(args.input).resolve()
+    vocals_out = Path(args.vocals).resolve()
+    instrumental_out = Path(args.instrumental).resolve()
+    if not source.is_file():
+        raise FileNotFoundError(f"Eingabe fehlt: {source}")
+    for out in (vocals_out, instrumental_out):
+        out.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="tunify_") as tmp:
+        work = Path(tmp)
+        current = work / "input.wav"
+        protocol.progress("load", 2, "Datei einlesen")
+        _to_wav(source, current)
+        protocol.progress("isolate", 10, "Gesang und Begleitung trennen")
+        vocals, instrumental = _separate(VOCALS_MODEL, current, work, keep="Vocals")
+        if instrumental is None:
+            raise RuntimeError("Die Trennung hat keine Begleitspur geliefert")
+        protocol.progress("save", 95, "Speichern")
+        _save(vocals, vocals_out)
+        _save(instrumental, instrumental_out)
+
+    protocol.progress("done", 100, "Fertig")
+    protocol.emit("result", vocals=str(vocals_out), instrumental=str(instrumental_out))
+
+
 def convert(args) -> None:
     source = Path(args.input).resolve()
     out = Path(args.out).resolve()
@@ -191,10 +226,7 @@ def convert(args) -> None:
             converted = mix_instrumental(converted, instrumental, args.instrumental_pitch, work)
 
         protocol.progress("save", 97, "Speichern")
-        if out.suffix.lower() == ".wav":
-            shutil.copyfile(converted, out)
-        else:
-            proc.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(converted), str(out)], check=True)
+        _save(converted, out)
 
     protocol.progress("done", 100, "Fertig")
     protocol.emit("result", output=str(out))

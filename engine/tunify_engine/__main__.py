@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Begleitung wieder dazumischen (Cover); nur mit --isolate-vocals")
     conv.add_argument("--instrumental-pitch", type=int, default=0, help="Begleitung um Halbtöne verschieben, -12 … 12")
 
+    sep = sub.add_parser("separate", help="Gesang und Begleitung trennen (wie Musicfy Vocal Remover)")
+    sep.add_argument("input", help="Eingabedatei (MP3, WAV, …)")
+    sep.add_argument("--vocals", required=True, help="Ausgabe Gesang (.wav, .mp3, .flac)")
+    sep.add_argument("--instrumental", required=True, help="Ausgabe Begleitung (.wav, .mp3, .flac)")
+
     an = sub.add_parser("analyze", help="Aufnahmen fürs Training bewerten (Länge, Pegel, Rauschen …)")
     an.add_argument("inputs", nargs="+", help="Aufnahmen (MP3, WAV, …)")
 
@@ -105,6 +110,9 @@ def dispatch(args) -> None:
     elif args.command == "convert":
         from .convert import convert
         convert(args)
+    elif args.command == "separate":
+        from .convert import separate
+        separate(args)
     elif args.command == "instruments":
         from .notes import list_instruments
         list_instruments()

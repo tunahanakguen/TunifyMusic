@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { ThemeChoice, useTheme } from "./theme";
 import ConvertPage from "./ConvertPage";
 import HistoryPage from "./HistoryPage";
+import SeparatePage from "./SeparatePage";
 import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
 import SongPage from "./SongPage";
@@ -20,6 +21,7 @@ type EngineInfo = {
 const AREAS = [
   { id: "start", label: "Start", phase: "" },
   { id: "convert", label: "Stimme umwandeln", phase: "" },
+  { id: "separate", label: "Gesang trennen", phase: "" },
   { id: "voices", label: "Stimmen", phase: "" },
   { id: "train", label: "Stimme trainieren", phase: "" },
   { id: "song", label: "Lied erzeugen", phase: "" },
@@ -164,6 +166,8 @@ export default function App() {
               setArea("voices");
             }}
           />
+        ) : area === "separate" ? (
+          <SeparatePage />
         ) : area === "voices" ? (
           <VoicesPage
             onUse={(voice) => {

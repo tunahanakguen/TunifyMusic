@@ -27,7 +27,7 @@ Analyse von Musicfy (alle Bereiche): [notizen/musicfy-analyse.md](notizen/musicf
 | **Lied erzeugen** | Create a Song | ACE-Step 1.5, optional danach RVC („in meiner Stimme“) | später |
 | **Instrumental erzeugen** | Text to Instrumental | ACE-Step 1.5 (instrumental) | später |
 | **Verlauf und Bibliothek** | History, Library | lokale Liste aller Ergebnisse, Favoriten | mit dem Kern |
-| Spuren trennen | Stem Splitter | Roformer/Demucs | offen, siehe Entscheidungen |
+| Spuren trennen | Stem Splitter | BS-Roformer | nur Gesang + Begleitung („Gesang trennen“); mehr Spuren in eigenem Programm |
 | API | api.musicfy.lol | – | nicht nötig (alles lokal) |
 
 ## Stimme umwandeln (Ablauf wie Musicfy)
@@ -119,8 +119,8 @@ TunifyMusic/
    Stand 21.10.2026: Die App bringt keine Stimmen mit; man importiert eigene .pth/.index/.zip (Hinweis auf
    Rechte/Einwilligung im Import-Dialog). Ob Tunify Music selbst Stimmen mitliefert, ist noch offen.
 4. **Umfang der ersten Version**: nur „Stimme umwandeln“ (Empfehlung) oder gleich mit Training bzw. Lied erzeugen?
-5. **Spuren trennen**: Die Trennung von Gesang und Begleitung braucht Tunify Music ohnehin. Soll es zusätzlich einen
-   eigenen Bereich für vier Spuren geben (Gesang, Schlagzeug, Bass, Rest) wie Musicfys Stem Splitter, oder nicht?
+5. ~~**Spuren trennen**~~: entschieden am 22.10.2026 → Tunify Music trennt nur Gesang und Begleitung (Bereich
+   „Gesang trennen“, dasselbe BS-Roformer-Modell wie beim Umwandeln). Mehr Spuren macht ein eigenes Programm.
 6. ~~**Name**~~: entschieden am 19.10.2026 → **Tunify Music** (vorher TUNAS Musicfyum, TUNAS Voicify)
 
 ## Fahrplan (Entwurf)

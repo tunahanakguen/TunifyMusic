@@ -225,6 +225,48 @@ async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Resul
     .map_err(|e| e.to_string())?
 }
 
+/// Einstellungen für „Gesang trennen“.
+#[derive(serde::Deserialize)]
+struct SeparateRequest {
+    input: String,
+    /// "wav", "mp3" oder "flac"
+    format: String,
+}
+
+/// Gesang und Begleitung in zwei Dateien trennen. Fortschritt kommt als Ereignis `engine-progress`.
+#[tauri::command]
+async fn separate_vocals(app: AppHandle, request: SeparateRequest) -> Result<serde_json::Value, String> {
+    if !FORMATS.contains(&request.format.as_str()) {
+        return Err(format!("Unbekanntes Format: {}", request.format));
+    }
+    let dir = output_dir(&app)?;
+    let vocals = unique_output(&dir, &request.input, "Gesang", &request.format);
+    let instrumental = unique_output(&dir, &request.input, "Begleitung", &request.format);
+    tauri::async_runtime::spawn_blocking(move || {
+        let vocals = vocals.to_string_lossy().to_string();
+        let instrumental = instrumental.to_string_lossy().to_string();
+        let args = [
+            "separate",
+            request.input.as_str(),
+            "--vocals",
+            vocals.as_str(),
+            "--instrumental",
+            instrumental.as_str(),
+        ];
+        let events = engine::run_job(&args, |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("engine-progress", event);
+            }
+        })?;
+        events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Stimmen-Bibliothek im App-Datenordner (%APPDATA%\de.tunas.tunifymusic\voices)
 fn voices_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("voices");
@@ -642,6 +684,7 @@ pub fn run() {
             analyze_recordings,
             save_recording,
             convert_instrument,
+            separate_vocals,
             list_voices,
             import_voice,
             rename_voice,
