@@ -1,10 +1,42 @@
 mod engine;
 mod history;
+mod setup;
 mod voices;
 
 use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Emitter, Manager};
+
+/// Ist der Motor eingerichtet (core) und „Musik erzeugen“ (music)?
+#[tauri::command]
+fn setup_status() -> setup::Status {
+    setup::status()
+}
+
+/// Lädt und richtet einen Teil ein („core“ oder „music“). Fortschritt kommt als Ereignis `setup-progress`.
+#[tauri::command]
+async fn run_setup(app: AppHandle, part: String) -> Result<setup::Status, String> {
+    let sources = setup::sources_dir(app.path().resource_dir().ok());
+    tauri::async_runtime::spawn_blocking(move || {
+        setup::run(&part, &sources, |percent, message| {
+            let _ = app.emit("setup-progress", serde_json::json!({ "percent": percent, "message": message }));
+        })?;
+        if part == "core" {
+            // Motor gleich laden, damit die erste Umwandlung nicht darauf wartet
+            std::thread::spawn(|| {
+                let _ = engine::start_server();
+            });
+        }
+        Ok(setup::status())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn cancel_setup() -> bool {
+    setup::cancel()
+}
 
 /// Meldet Python-, PyTorch- und Grafikkarten-Infos des Motors.
 #[tauri::command]
@@ -79,7 +111,7 @@ fn save_recording(app: AppHandle, request: tauri::ipc::Request<'_>) -> Result<St
 /// WebM → WAV mit FFmpeg; die WebM-Datei wird danach gelöscht.
 fn webm_to_wav(webm: &Path) -> Option<PathBuf> {
     let wav = webm.with_extension("wav");
-    let mut ffmpeg = std::process::Command::new("ffmpeg");
+    let mut ffmpeg = std::process::Command::new(engine::ffmpeg());
     ffmpeg.args(["-y", "-loglevel", "error", "-i"]).arg(webm).arg(&wav);
     #[cfg(windows)]
     std::os::windows::process::CommandExt::creation_flags(&mut ffmpeg, 0x0800_0000);
@@ -588,15 +620,24 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|_| {
+        .setup(|app| {
+            // Nach einem Update den neuen Motor-Code in den Datenordner bringen
+            if engine::data_root().join("engine").exists() {
+                let _ = setup::install_sources(&setup::sources_dir(app.path().resource_dir().ok()));
+            }
             // Motor gleich beim Start laden (ca. 20 s), damit die erste Umwandlung nicht darauf wartet
-            std::thread::spawn(|| {
-                let _ = engine::start_server();
-            });
+            if setup::status().core {
+                std::thread::spawn(|| {
+                    let _ = engine::start_server();
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             engine_info,
+            setup_status,
+            run_setup,
+            cancel_setup,
             list_instruments,
             analyze_recordings,
             save_recording,

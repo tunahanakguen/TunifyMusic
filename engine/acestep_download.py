@@ -1,6 +1,6 @@
 """Lädt die ACE-Step-Modelle für 8-GB-Grafikkarten (ca. 7,4 GB, MIT) von Hugging Face.
 
-Aufruf (mit der ACE-Step-Umgebung): engine\\vendor\\ace-step\\.venv\\Scripts\\python -I tools\\download-acestep-models.py <Zielordner>
+Aufruf (mit der ACE-Step-Umgebung): engine\\vendor\\ace-step\\.venv\\Scripts\\python -I engine\\acestep_download.py <Zielordner>
 Bewusst ohne das Sprachmodell 1.7B (3,6 GB): für 8 GB ist 0.6B vorgesehen.
 """
 import sys

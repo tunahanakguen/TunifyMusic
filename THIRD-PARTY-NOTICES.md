@@ -1,7 +1,9 @@
 # Fremde Bausteine
 
-Tunify Music (GPL-3.0) verwendet diese freien Programme und Modelle. Sie liegen nicht im Repo, sondern werden
-von `tools/setup-engine.ps1` bzw. beim ersten Gebrauch geladen.
+Tunify Music (GPL-3.0) verwendet diese freien Programme und Modelle. Sie liegen weder im Repo noch im Installer:
+Die Einrichtung beim ersten Start (`engine/setup.ps1`) lädt sie von den Original-Quellen, jeweils auf eine Version
+und SHA-256-Prüfsumme festgelegt, in den Datenordner `%LOCALAPPDATA%\de.tunas.tunifymusic`. Im Repo machen das
+`tools/setup-*.ps1`. Einige Modelle lädt der Motor beim ersten Gebrauch nach.
 
 | Baustein | Version | Lizenz | Quelle |
 |---|---|---|---|
@@ -10,7 +12,9 @@ von `tools/setup-engine.ps1` bzw. beim ersten Gebrauch geladen.
 | PyTorch / torchaudio | 2.11.0 (CUDA 12.8) | BSD-3-Clause | https://pytorch.org |
 | Tauri | 2 | MIT / Apache-2.0 | https://tauri.app |
 | React | 19 | MIT | https://react.dev |
-| FFmpeg | 9.0.2 (systemweit installiert) | LGPL/GPL | https://ffmpeg.org |
+| FFmpeg | 9.0.2 „full build“ von Gyan (mit Rubber Band) | GPL-3.0 | https://ffmpeg.org, Build: https://github.com/GyanD/codexffmpeg |
+| uv | 0.13.1 (lädt Python und Pakete) | MIT / Apache-2.0 | https://github.com/astral-sh/uv |
+| Python | 3.12 (über uv) | PSF | https://www.python.org |
 | FluidSynth | 2.6.1 (in `engine/.tools`) | LGPL-2.1 | https://github.com/FluidSynth/fluidsynth |
 | mido | 1.3.3 | MIT | https://github.com/mido/mido |
 | ACE-Step 1.5 | v0.1.8 (eigene Umgebung in `engine/vendor/ace-step`, PyTorch 2.7.1 cu128) | MIT | https://github.com/ace-step/ACE-Step-1.5 |

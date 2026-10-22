@@ -21,4 +21,4 @@ Pop-Location
 $models = Join-Path $root 'models\ace-step'
 New-Item -ItemType Directory -Force $models | Out-Null
 $python = Join-Path $ace '.venv\Scripts\python.exe'
-& $python -I (Join-Path $PSScriptRoot 'download-acestep-models.py') $models
+& $python -I (Join-Path $root 'engine\acestep_download.py') $models

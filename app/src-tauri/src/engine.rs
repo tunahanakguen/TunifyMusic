@@ -8,7 +8,7 @@
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, channel};
@@ -21,17 +21,46 @@ use std::os::windows::process::CommandExt;
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-/// Ordner des Motors. In der Entwicklung liegt er neben `app/` im Repo.
-/// Mit `TUNIFY_ENGINE_DIR` lässt er sich überschreiben.
+/// Datenordner der installierten App: Motor, Python-Umgebungen und Modelle (`setup.ps1` richtet ihn ein).
+/// Standard `%LOCALAPPDATA%\de.tunas.tunifymusic`, zum Testen mit `TUNIFY_DATA_DIR` überschreibbar.
+pub fn data_root() -> PathBuf {
+    if let Some(dir) = std::env::var_os("TUNIFY_DATA_DIR") {
+        return PathBuf::from(dir);
+    }
+    std::env::var_os("LOCALAPPDATA").map(PathBuf::from).unwrap_or_else(std::env::temp_dir).join("de.tunas.tunifymusic")
+}
+
+/// Der Motor im Repo (Entwicklung)
+pub fn repo_engine() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("engine")
+}
+
+fn venv_python(engine: &Path) -> PathBuf {
+    engine.join(".venv").join("Scripts").join("python.exe")
+}
+
+/// Ordner des Motors: der eingerichtete im Datenordner, sonst der im Repo (Entwicklungsrechner).
+/// `TUNIFY_ENGINE_DIR` legt ihn fest; mit `TUNIFY_DATA_DIR` zählt nur der Datenordner.
 pub fn engine_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("TUNIFY_ENGINE_DIR") {
         return PathBuf::from(dir);
     }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("engine")
+    let installed = data_root().join("engine");
+    if data_root().join("ready-core.txt").exists() || std::env::var_os("TUNIFY_DATA_DIR").is_some() {
+        return installed;
+    }
+    let repo = repo_engine();
+    if venv_python(&repo).exists() { repo } else { installed }
+}
+
+/// FFmpeg aus der Einrichtung (mit Rubber Band), sonst das im PATH
+pub fn ffmpeg() -> PathBuf {
+    let own = engine_dir().join(".tools").join("ffmpeg").join("bin").join("ffmpeg.exe");
+    if own.exists() { own } else { PathBuf::from("ffmpeg") }
 }
 
 fn python() -> Result<PathBuf, String> {
-    let python = engine_dir().join(".venv").join("Scripts").join("python.exe");
+    let python = venv_python(&engine_dir());
     if python.exists() {
         Ok(python)
     } else {
@@ -48,6 +77,15 @@ fn command(args: &[&str]) -> Result<Command, String> {
         .current_dir(engine_dir())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    // Der Motor ruft „ffmpeg“ auf: das eigene aus der Einrichtung zuerst
+    let ffmpeg = ffmpeg();
+    if let Some(bin) = ffmpeg.parent().filter(|b| !b.as_os_str().is_empty()) {
+        let path = std::env::var_os("PATH").unwrap_or_default();
+        let joined = std::env::join_paths(std::iter::once(bin.to_path_buf()).chain(std::env::split_paths(&path)));
+        if let Ok(joined) = joined {
+            command.env("PATH", joined);
+        }
+    }
     #[cfg(windows)]
     command.creation_flags(CREATE_NO_WINDOW);
     Ok(command)

@@ -6,6 +6,7 @@ import HistoryPage from "./HistoryPage";
 import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
 import SongPage from "./SongPage";
+import SetupPanel, { SetupStatus } from "./SetupPanel";
 import "./App.css";
 
 type EngineInfo = {
@@ -109,6 +110,14 @@ export default function App() {
   // aus Verlauf oder Stimmen heraus „Umwandeln“/„Benutzen“: Datei bzw. Stimme vorwählen;
   // der Zähler erzwingt eine frische Seite
   const [handoff, setHandoff] = useState<{ path?: string; voice?: string; n: number } | null>(null);
+  // null = wird noch geprüft; ohne Tauri (reiner Browser) gilt alles als eingerichtet
+  const [setup, setSetup] = useState<SetupStatus | null>(null);
+  useEffect(() => {
+    invoke<SetupStatus>("setup_status")
+      .then(setSetup)
+      .catch(() => setSetup({ core: true, music: true, folder: "" }));
+  }, []);
+  const needsSetup = setup !== null && !setup.core;
   return (
     <div className="shell">
       <header className="topbar">
@@ -123,7 +132,7 @@ export default function App() {
           <button
             key={a.id}
             className={`nav-item ${a.id === area ? "active" : ""}`}
-            disabled={!!a.phase}
+            disabled={!!a.phase || needsSetup}
             aria-current={a.id === area ? "page" : undefined}
             title={a.phase ? `kommt in ${a.phase}` : undefined}
             onClick={() => {
@@ -137,7 +146,15 @@ export default function App() {
         ))}
       </nav>
       <main className="content">
-        {area === "convert" ? (
+        {needsSetup ? (
+          <>
+            <h1>Willkommen</h1>
+            <p className="muted">
+              Gesang und Melodien lokal umwandeln, Stimmen trainieren und Musik erzeugen – ohne Konto, ohne Limit.
+            </p>
+            <SetupPanel part="core" onDone={setSetup} />
+          </>
+        ) : area === "convert" ? (
           <ConvertPage
             key={handoff?.n ?? 0}
             initialInput={handoff?.path ?? null}
@@ -172,8 +189,12 @@ export default function App() {
           </>
         ) : null}
         {/* immer da, nur versteckt: Training und Lieder laufen weiter, während man andere Seiten nutzt */}
-        <SongPage instrumental={false} active={area === "song"} />
-        <SongPage instrumental active={area === "instrumental"} />
+        {setup?.core && (
+          <>
+            <SongPage instrumental={false} active={area === "song"} musicReady={setup.music} onSetup={setSetup} />
+            <SongPage instrumental active={area === "instrumental"} musicReady={setup.music} onSetup={setSetup} />
+          </>
+        )}
         <TrainPage
           active={area === "train"}
           onUse={(voice) => {
