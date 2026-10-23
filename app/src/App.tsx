@@ -8,6 +8,7 @@ import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
 import SongPage from "./SongPage";
 import SetupPanel, { SetupStatus } from "./SetupPanel";
+import UpdateBanner from "./UpdateBanner";
 import "./App.css";
 
 type EngineInfo = {
@@ -148,6 +149,7 @@ export default function App() {
         ))}
       </nav>
       <main className="content">
+        <UpdateBanner />
         {needsSetup ? (
           <>
             <h1>Willkommen</h1>

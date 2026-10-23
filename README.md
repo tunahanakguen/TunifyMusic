@@ -42,6 +42,10 @@ Ergebnisse landen in `Musik\Tunify Music`.
    Abbrechen ist möglich, „Weitermachen“ setzt dort fort.
 3. „Musik erzeugen“ wird erst eingerichtet, wenn man „Lied erzeugen“ oder „Instrumental erzeugen“ öffnet.
 
+Updates: Beim Start sieht die App auf [GitHub Releases](https://github.com/tunahanakguen/TunifyMusic/releases)
+nach einer neuen Version und bietet sie oben an („Jetzt aktualisieren“). Updates sind signiert; installiert wird nur,
+was mit dem Schlüssel des Projekts unterschrieben ist.
+
 Wo was liegt:
 
 | Was | Ort |
@@ -72,7 +76,11 @@ cd app; npm install; npm run tauri dev
 Im Repo benutzt die App den Motor in `engine\`; ist dort keiner eingerichtet, den aus dem Datenordner.
 `TUNIFY_ENGINE_DIR` bzw. `TUNIFY_DATA_DIR` legen beides fest (z. B. zum Testen der Einrichtung in einem leeren Ordner).
 
-Installer bauen: `npx tauri build` in `app\` → `app\src-tauri\target\release\bundle\nsis\`. Die mitgelieferten
+Neue Version veröffentlichen: Version in `app/src-tauri/tauri.conf.json`, `app/package.json` und
+`app/src-tauri/Cargo.toml` erhöhen, committen, dann `tools\release.ps1 -Notes "Was ist neu"` (baut, signiert mit
+`%USERPROFILE%\.tauri\tunify-music.key`, legt das GitHub-Release mit `latest.json` an).
+
+Installer nur bauen: `npx tauri build` in `app\` → `app\src-tauri\target\release\bundle\nsis\`. Die mitgelieferten
 Stimmen kommen aus `models\bundled-voices\` (nicht im Repo, zu groß; Herkunft in [KONZEPT.md](KONZEPT.md)).
 
 Motor per Kommandozeile (aus `engine\`, Ausgabe als JSON-Zeilen):

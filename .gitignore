@@ -17,3 +17,6 @@ ausgabe/
 
 # Rust / Tauri
 target/
+
+# Release-Dateien
+dist/

@@ -12,6 +12,8 @@
       "allow": [{ "path": "$AUDIO/Tunify Music" }]
     },
     "dialog:allow-open",
-    "dialog:allow-ask"
+    "dialog:allow-ask",
+    "updater:default",
+    "process:allow-restart"
   ]
 }
