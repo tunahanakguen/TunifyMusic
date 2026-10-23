@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import YoutubeInput from "./YoutubeInput";
 
 type Progress = { step: string; percent: number; message: string };
 type Result = { vocals: string; instrumental: string };
@@ -64,6 +65,7 @@ export default function SeparatePage() {
     setInput(path);
     setResult(null);
     setError(null);
+    setProgress(null);
   }
 
   async function pick() {
@@ -116,6 +118,7 @@ export default function SeparatePage() {
             </>
           )}
         </button>
+        <YoutubeInput disabled={busy} onLoaded={choose} onError={setError} />
       </section>
 
       <section className="card wide">

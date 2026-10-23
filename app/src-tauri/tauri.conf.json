@@ -24,7 +24,9 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$AUDIO/Tunify Music/**"
+          "$AUDIO/Tunify Music/**",
+          "$APPDATA/voices/*/cover.*",
+          "$APPDATA/voices/*/preview.mp3"
         ]
       }
     }
@@ -47,10 +49,12 @@
     "licenseFile": "../../LICENSE",
     "resources": {
       "../../engine/tunify_engine/*.py": "engine/tunify_engine/",
+      "../../engine/tunify_engine/assets/*": "engine/tunify_engine/assets/",
       "../../engine/acestep_worker.py": "engine/acestep_worker.py",
       "../../engine/acestep_download.py": "engine/acestep_download.py",
       "../../engine/requirements.lock.txt": "engine/requirements.lock.txt",
       "../../engine/setup.ps1": "engine/setup.ps1",
+      "../../models/bundled-voices/": "voices/",
       "../../THIRD-PARTY-NOTICES.md": "THIRD-PARTY-NOTICES.md"
     },
     "windows": {

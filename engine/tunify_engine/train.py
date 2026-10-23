@@ -93,6 +93,15 @@ def _train(core, run: str, epochs: int, batch: int) -> None:
         raise RuntimeError("Training abgebrochen: " + " | ".join(t for t in tail if t)[-500:])
 
 
+def median_f0(logs: Path) -> float | None:
+    """Mittlere Tonhöhe der Trainingsdaten in Hz (für Hörprobe und Tonhöhen-Vorschlag)."""
+    import numpy as np
+
+    parts = [np.load(f) for f in (logs / "f0_voiced").glob("*.npy")]
+    voiced = np.concatenate([p[p > 0] for p in parts]) if parts else np.array([])
+    return round(float(np.median(voiced)), 1) if voiced.size else None
+
+
 def train(args) -> None:
     inputs = [Path(p).resolve() for p in args.inputs]
     missing = [str(p) for p in inputs if not p.exists()]
@@ -144,4 +153,4 @@ def train(args) -> None:
     indexes = sorted(logs.glob("*.index"), key=lambda p: not p.name.startswith("added_"))
     protocol.progress("done", 100, "Fertig")
     protocol.emit("result", model=str(models[-1]), index=str(indexes[0]) if indexes else None,
-                  workspace=str(logs), seconds=round(seconds, 1))
+                  workspace=str(logs), seconds=round(seconds, 1), f0=median_f0(logs))

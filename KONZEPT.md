@@ -115,9 +115,10 @@ TunifyMusic/
 
 1. ~~**Programmrahmen**~~: entschieden am 20.10.2026 → **Tauri 2 + React + Python-Motor**, später ONNX in Rust
 2. ~~**Motor**~~: entschieden am 20.10.2026 → **Applio 3.7.0** (MIT, fest auf diese Version, in `engine/vendor`) für RVC-Umwandlung und -Training + **python-audio-separator 0.47.1** (BS-Roformer, UVR-DeEcho-DeReverb, UVR-DeNoise), angesteuert vom eigenen Paket `tunify_engine`
-3. **Modelle**: nur selbst trainierte, oder auch freie Community-Modelle (Lizenz jeweils prüfen)?
-   Stand 21.10.2026: Die App bringt keine Stimmen mit; man importiert eigene .pth/.index/.zip (Hinweis auf
-   Rechte/Einwilligung im Import-Dialog). Ob Tunify Music selbst Stimmen mitliefert, ist noch offen.
+3. ~~**Modelle**~~: entschieden am 23.10.2026 → Tunify Music liefert zwei selbst trainierte Stimmen mit, „Klara“
+   und „Jonas“. Jede ist aus drei Sprecherinnen bzw. Sprechern von LibriTTS-R (CC BY 4.0, nach gemeinfreien
+   LibriVox-Aufnahmen) zu je 5 min gemischt, gehört also keiner einzelnen Person. Keine Community-Modelle (meist
+   Stimmen echter Sänger ohne Einwilligung). Eigene Stimmen importiert man (.pth/.index/.zip) oder trainiert sie.
 4. **Umfang der ersten Version**: nur „Stimme umwandeln“ (Empfehlung) oder gleich mit Training bzw. Lied erzeugen?
 5. ~~**Spuren trennen**~~: entschieden am 22.10.2026 → Tunify Music trennt nur Gesang und Begleitung (Bereich
    „Gesang trennen“, dasselbe BS-Roformer-Modell wie beim Umwandeln). Mehr Spuren macht ein eigenes Programm.
@@ -135,6 +136,7 @@ TunifyMusic/
 | 5 | „Lied erzeugen“ und „Instrumental erzeugen“ mit ACE-Step, optional in eigener Stimme — ✓ fertig und in der installierten App getestet (21.10.2026): Instrumental 30 s in 2:17 min inkl. erstem Laden, Lied 1:30 in „Meine Stimme“ in 2:22 min (davon ca. 85 s Gesang trennen). Gleiche Zufallszahl ergibt dasselbe Stück. ACE-Step 1.5 v0.1.8 in eigener Umgebung (PyTorch 2.7.1), Turbo-DiT + Sprachmodell 0.6B (8-GB-Stufe, INT8, Auslagern), eigener Arbeitsprozess hält die Modelle. Gemessen: Laden 70–90 s beim ersten Mal, 30 s Musik in ca. 55 s; „in eigener Stimme“: Gesang trennen → RVC → mischen |
 | 5b | Ergänzungen ✓ (21.10.2026): Begleitung beim Cover transponieren (FFmpeg-Rubber-Band, Knopf „Passend zur Stimme“ wählt die kleinste Verschiebung in dieselbe Tonart), Verlauf mit Favoriten, Suche und Löschen in den Papierkorb; Training bewertet jede Aufnahme (gut/brauchbar/schlecht: Länge, Pegel, Übersteuerung, Rauschen, Pausen) und zeigt die Gesamtlänge; Lied/Instrumental mit Stilvorlage (Referenz-Lied, ACE-Step `reference_audio`) |
 | 6 | Installer ✓ (22.10.2026; Einrichtung im Fenster getestet: Abbrechen, Weitermachen, danach Umwandlung mit Stimme und Instrument; Musik-Teil im Fenster 51 min, fast nur der Modell-Download, 13,4 GB, danach 30 s Instrumental in 3:52 min mit erstem Laden): NSIS, 1,8 MB, deutsch, installiert für alle Benutzer nach `C:\Program Files\Tunify Music` (nie in den Benutzerordner; braucht Administratorrechte). Er bringt nur App und Motor-Quellcode mit; beim ersten Start lädt die App den Motor in `%LOCALAPPDATA%\de.tunas.tunifymusic` (`engine/setup.ps1`: uv, Python 3.12, Pakete nach `requirements.lock.txt`, Applio, FFmpeg mit Rubber Band, FluidSynth, Klangsätze, Modelle; jede Datei mit SHA-256), ca. 12 GB auf der Festplatte, hier 3–5 min (Pakete im uv-Cache). „Musik erzeugen“ (ACE-Step, ca. 14 GB) ist ein eigener, freiwilliger Teil. Bauen: `npx tauri build` in `app/` |
+| 6b | Ergänzungen ✓ (23.10.2026): Gesang trennen (Gesang + Begleitung, BS-Roformer); YouTube-Link als Eingabe (yt-dlp, nur einzelne Videos bis 20 min, aktualisiert sich bei Fehlern selbst); Stimmen mit Bild und Hörprobe (Beispielsatz aus LibriTTS-R, Tonhöhe passend zur mittleren Tonlage der Stimme, die das Training jetzt mitspeichert); zwei mitgelieferte Stimmen; Grafikkarten-Prüfung vor dem Einrichten (nvidia-smi: Karte, ab 4 GB, Treiber ab 528.33; Hinweis bei unter 8 GB für Musik erzeugen) |
 
 ## Erkenntnisse aus Phase 1 (20.10.2026)
 

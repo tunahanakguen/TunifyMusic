@@ -63,6 +63,16 @@ def _separate(model: str, source: Path, work: Path, keep: str) -> tuple[Path, Pa
 SILENCE_DB = -60.0
 
 
+def _isolate_message(text: str, wav: Path) -> str:
+    """Trennen dauert auf einer Mittelklasse-Karte etwa so lang wie das Lied; bei langen Stücken das sagen."""
+    import soundfile
+
+    seconds = soundfile.info(str(wav)).duration
+    if seconds < 90:
+        return text
+    return f"{text} – bei {seconds / 60:.0f} min Ton dauert das einige Minuten"
+
+
 def _peak_db(path: Path) -> float:
     import numpy as np
     import soundfile as sf
@@ -128,6 +138,26 @@ def _save(source: Path, out: Path) -> None:
         proc.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(source), str(out)], check=True)
 
 
+DEMO = Path(__file__).resolve().parent / "assets" / "demo.flac"
+# mittlere Tonhöhe des Beispielsatzes (RMVPE), siehe assets/README.md
+DEMO_F0 = 193.8
+
+
+def preview(args) -> None:
+    """Hörprobe einer Stimme: den Beispielsatz mit ihr sprechen lassen, passend zu ihrer Tonlage."""
+    import math
+    from argparse import Namespace
+
+    pitch = 0
+    if args.f0 > 0 and DEMO_F0 > 0:
+        pitch = max(-12, min(12, round(12 * math.log2(args.f0 / DEMO_F0))))
+    convert(Namespace(
+        input=str(DEMO), out=args.out, model=args.model, index=args.index, pitch=pitch, formant=1.0,
+        index_rate=0.3, protect=0.33, isolate_vocals=False, dereverb=False, denoise=False,
+        mix_instrumental=False, instrumental_pitch=0,
+    ))
+
+
 def separate(args) -> None:
     """Gesang und Begleitung trennen (wie Musicfys „Vocal Remover“). Mehr Spuren macht ein eigenes Programm."""
     source = Path(args.input).resolve()
@@ -143,7 +173,7 @@ def separate(args) -> None:
         current = work / "input.wav"
         protocol.progress("load", 2, "Datei einlesen")
         _to_wav(source, current)
-        protocol.progress("isolate", 10, "Gesang und Begleitung trennen")
+        protocol.progress("isolate", 10, _isolate_message("Gesang und Begleitung trennen", current))
         vocals, instrumental = _separate(VOCALS_MODEL, current, work, keep="Vocals")
         if instrumental is None:
             raise RuntimeError("Die Trennung hat keine Begleitspur geliefert")
@@ -179,7 +209,7 @@ def convert(args) -> None:
 
         instrumental = None
         if args.isolate_vocals:
-            protocol.progress("isolate", 10, "Instrumental entfernen")
+            protocol.progress("isolate", 10, _isolate_message("Instrumental entfernen", current))
             current, instrumental = _separate(VOCALS_MODEL, current, work, keep="Vocals")
         if args.dereverb:
             protocol.progress("dereverb", 35, "Hall/Echo entfernen")

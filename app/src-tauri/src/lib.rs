@@ -33,6 +33,12 @@ async fn run_setup(app: AppHandle, part: String) -> Result<setup::Status, String
     .map_err(|e| e.to_string())?
 }
 
+/// Grafikkarte prüfen (vor dem Einrichten, ohne Python)
+#[tauri::command]
+async fn check_gpu() -> setup::Gpu {
+    tauri::async_runtime::spawn_blocking(setup::gpu).await.unwrap_or_else(|_| setup::gpu())
+}
+
 #[tauri::command]
 fn cancel_setup() -> bool {
     setup::cancel()
@@ -225,6 +231,27 @@ async fn convert_instrument(app: AppHandle, request: InstrumentRequest) -> Resul
     .map_err(|e| e.to_string())?
 }
 
+/// Tonspur eines YouTube-Videos nach Musik\Tunify Music\Downloads laden; gibt den Dateipfad zurück.
+#[tauri::command]
+async fn fetch_youtube(app: AppHandle, url: String) -> Result<String, String> {
+    let dir = output_dir(&app)?.join("Downloads");
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = dir.to_string_lossy().to_string();
+        let events = engine::run_job(&["youtube", url.as_str(), "--out-dir", dir.as_str()], |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("engine-progress", event);
+            }
+        })?;
+        events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .and_then(|e| e["path"].as_str().map(str::to_string))
+            .ok_or_else(|| "Motor hat keine Datei gemeldet".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Einstellungen für „Gesang trennen“.
 #[derive(serde::Deserialize)]
 struct SeparateRequest {
@@ -296,6 +323,41 @@ fn rename_voice(app: AppHandle, id: String, name: String) -> Result<voices::Voic
 #[tauri::command]
 fn delete_voice(app: AppHandle, id: String) -> Result<(), String> {
     voices::delete(&voices_dir(&app)?, &id)
+}
+
+#[tauri::command]
+fn set_voice_image(app: AppHandle, id: String, file: String) -> Result<voices::Voice, String> {
+    voices::set_image(&voices_dir(&app)?, &id, Path::new(&file))
+}
+
+/// Hörprobe: Beispielsatz mit der Stimme umwandeln (nach `voices/<id>/preview.mp3`).
+#[tauri::command]
+async fn make_voice_preview(app: AppHandle, id: String) -> Result<voices::Voice, String> {
+    let library = voices_dir(&app)?;
+    let voice = voices::get(&library, &id)?;
+    let out = voices::preview_path(&library, &id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = out.to_string_lossy().to_string();
+        let f0 = voice.f0.unwrap_or(0.0).to_string();
+        let mut args = vec!["preview", "--model", voice.model.as_str(), "--f0", f0.as_str(), "--out", out.as_str()];
+        if let Some(index) = &voice.index {
+            args.extend(["--index", index.as_str()]);
+        }
+        engine::run_job(&args, |_| {})?;
+        voices::get(&library, &id)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Mitgelieferte Stimmen: im Installer unter `voices/`, beim Entwickeln in `models/bundled-voices`.
+fn bundled_voices(app: &tauri::App) -> PathBuf {
+    app.path()
+        .resource_dir()
+        .ok()
+        .map(|dir| dir.join("voices"))
+        .filter(|dir| dir.exists())
+        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..").join("models").join("bundled-voices"))
 }
 
 /// Einstellungen für „Stimme umwandeln“ → andere Stimme (RVC).
@@ -452,7 +514,11 @@ async fn train_voice(app: AppHandle, request: TrainRequest) -> Result<voices::Vo
             if let Some(index) = result["index"].as_str() {
                 files.push(index.to_string());
             }
-            voices::import(&library, &name, &files)
+            let voice = voices::import(&library, &name, &files)?;
+            match result["f0"].as_f64() {
+                Some(f0) => voices::set_f0(&library, &voice.id, f0 as f32),
+                None => Ok(voice),
+            }
         });
         if let Some(path) = workspace {
             remove_workspace(&path);
@@ -667,6 +733,10 @@ pub fn run() {
             if engine::data_root().join("engine").exists() {
                 let _ = setup::install_sources(&setup::sources_dir(app.path().resource_dir().ok()));
             }
+            if let Ok(library) = voices_dir(app.handle()) {
+                let record = library.parent().unwrap_or(&library).join("bundled.json");
+                voices::install_bundled(&library, &bundled_voices(app), &record);
+            }
             // Motor gleich beim Start laden (ca. 20 s), damit die erste Umwandlung nicht darauf wartet
             if setup::status().core {
                 std::thread::spawn(|| {
@@ -680,12 +750,16 @@ pub fn run() {
             setup_status,
             run_setup,
             cancel_setup,
+            check_gpu,
             list_instruments,
             analyze_recordings,
             save_recording,
             convert_instrument,
             separate_vocals,
+            fetch_youtube,
             list_voices,
+            set_voice_image,
+            make_voice_preview,
             import_voice,
             rename_voice,
             delete_voice,

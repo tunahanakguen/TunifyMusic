@@ -50,6 +50,8 @@ $SOURCES = @{
                      sha = '9575028C7A1F589F5770FCCC8CFF2734566AF40CD26ED836944E9A5152688CFE' }
     gu_license  = @{ url = 'https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/684543d5e5efaef08d02be50dcda8d552478fa60/documentation/LICENSE.txt'
                      sha = '7B32EFEFDF95CE38A043799F0659853DDC00FBAA14D8C50F0ACA16B9B8B405BE' }
+    ytdlp       = @{ url = 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe'
+                     sha = '66674953FE251B89F4D08C5F0E35E0728679BD67AB3D7D05C0562AF101DD3E7A' }
     acestep     = @{ url = 'https://github.com/ace-step/ACE-Step-1.5/archive/refs/tags/v0.1.8.zip'
                      sha = '8C39E3E4C7C939ED8D3617E4FBE81585EC869276A228DA5D6080BB2C3E4C3DB0' }
 }
@@ -111,6 +113,13 @@ if ($Part -eq 'core') {
         Step 8 'Applio (RVC) laden'
         New-Item -ItemType Directory -Force (Join-Path $engine 'vendor') | Out-Null
         Unpack (Fetch 'applio') $applio
+    }
+
+    $ytdlp = Join-Path $tools 'yt-dlp\yt-dlp.exe'
+    if (-not (Test-Path $ytdlp)) {
+        Step 9 'yt-dlp laden (YouTube-Links)'
+        New-Item -ItemType Directory -Force (Split-Path $ytdlp) | Out-Null
+        Copy-Item (Fetch 'ytdlp') $ytdlp
     }
 
     $fluidsynth = Join-Path $tools 'fluidsynth'

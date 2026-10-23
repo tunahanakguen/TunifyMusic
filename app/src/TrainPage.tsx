@@ -106,11 +106,12 @@ export default function TrainPage({ active, onUse }: Props) {
     setTrained(null);
     setProgress({ step: "start", percent: 0, message: "Motor bereit machen …" });
     try {
-      setTrained(
-        await invoke<Voice>("train_voice", {
-          request: { name, inputs, epochs, isolateVocals, dereverb, denoise },
-        }),
-      );
+      const voice = await invoke<Voice>("train_voice", {
+        request: { name, inputs, epochs, isolateVocals, dereverb, denoise },
+      });
+      setTrained(voice);
+      // Hörprobe gleich im Hintergrund erstellen (erscheint unter „Stimmen“)
+      invoke("make_voice_preview", { id: voice.id }).catch(() => {});
     } catch (e) {
       if (String(e) === "Abgebrochen") setCancelled(true);
       else setError(String(e));

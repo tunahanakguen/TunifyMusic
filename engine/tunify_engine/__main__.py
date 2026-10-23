@@ -53,6 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
     sep.add_argument("--vocals", required=True, help="Ausgabe Gesang (.wav, .mp3, .flac)")
     sep.add_argument("--instrumental", required=True, help="Ausgabe Begleitung (.wav, .mp3, .flac)")
 
+    pv = sub.add_parser("preview", help="Hörprobe einer Stimme erzeugen (Beispielsatz umwandeln)")
+    pv.add_argument("--model", required=True, help="RVC-Modell (.pth)")
+    pv.add_argument("--index", default="", help="Index-Datei (.index), optional")
+    pv.add_argument("--f0", type=float, default=0, help="mittlere Tonhöhe der Stimme in Hz (0 = unbekannt)")
+    pv.add_argument("--out", required=True, help="Ausgabedatei (.mp3)")
+
+    yt = sub.add_parser("youtube", help="Tonspur eines YouTube-Videos laden")
+    yt.add_argument("url", help="Link zum Video (youtube.com oder youtu.be)")
+    yt.add_argument("--out-dir", required=True, help="Zielordner")
+
     an = sub.add_parser("analyze", help="Aufnahmen fürs Training bewerten (Länge, Pegel, Rauschen …)")
     an.add_argument("inputs", nargs="+", help="Aufnahmen (MP3, WAV, …)")
 
@@ -113,6 +123,12 @@ def dispatch(args) -> None:
     elif args.command == "separate":
         from .convert import separate
         separate(args)
+    elif args.command == "preview":
+        from .convert import preview
+        preview(args)
+    elif args.command == "youtube":
+        from .youtube import youtube
+        youtube(args)
     elif args.command == "instruments":
         from .notes import list_instruments
         list_instruments()

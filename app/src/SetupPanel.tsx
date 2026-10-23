@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 
 export type SetupStatus = { core: boolean; music: boolean; folder: string };
 type Progress = { percent: number; message: string };
+type Gpu = { name: string | null; vramGb: number; driver: string; problem: string | null; musicWarning: string | null };
 
 const PARTS = {
   core: {
@@ -30,7 +31,15 @@ export default function SetupPanel({ part, onDone }: Props) {
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
+  const [gpu, setGpu] = useState<Gpu | null>(null);
   const info = PARTS[part];
+  const warning = gpu ? (gpu.problem ?? (part === "music" ? gpu.musicWarning : null)) : null;
+
+  useEffect(() => {
+    invoke<Gpu>("check_gpu")
+      .then(setGpu)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -65,9 +74,14 @@ export default function SetupPanel({ part, onDone }: Props) {
       <h2>{info.title}</h2>
       <p>{info.text}</p>
       <p className="muted small">{info.size}</p>
+      {gpu && (
+        <p className={warning ? "gpu-warning" : "muted small"}>
+          {warning ?? `Grafikkarte: ${gpu.name} · ${gpu.vramGb} GB · Treiber ${gpu.driver}`}
+        </p>
+      )}
       <div className="actions">
         <button onClick={start} disabled={busy}>
-          {busy ? "Wird eingerichtet …" : cancelled || error ? "Weitermachen" : info.button}
+          {busy ? "Wird eingerichtet …" : cancelled || error ? "Weitermachen" : gpu?.problem ? "Trotzdem einrichten" : info.button}
         </button>
         {busy && (
           <button className="ghost" onClick={() => invoke("cancel_setup")}>

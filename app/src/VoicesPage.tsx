@@ -1,8 +1,20 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { ask, open } from "@tauri-apps/plugin-dialog";
 
-export type Voice = { id: string; name: string; model: string; index: string | null; created: number };
+export type Voice = {
+  id: string;
+  name: string;
+  model: string;
+  index: string | null;
+  created: number;
+  /** mittlere Tonhöhe in Hz (trainierte und mitgelieferte Stimmen) */
+  f0: number | null;
+  /** Herkunft, z. B. bei mitgelieferten Stimmen */
+  note: string | null;
+  image: string | null;
+  preview: string | null;
+};
 
 const DATE = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" });
 
@@ -23,6 +35,10 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
   const [pending, setPending] = useState<{ files: string[]; name: string } | null>(null);
   const [importing, setImporting] = useState(false);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  // Stimmen, deren Hörprobe gerade entsteht
+  const [previewing, setPreviewing] = useState<string[]>([]);
+  // neue Bild-/Hörprobe-Dateien haben denselben Pfad: Zähler umgeht den Zwischenspeicher der WebView
+  const [version, setVersion] = useState(0);
 
   async function load() {
     try {
@@ -46,14 +62,45 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
     if (files && files.length) setPending({ files, name: suggestName(files) });
   }
 
+  async function makePreview(id: string) {
+    setPreviewing((list) => [...list, id]);
+    try {
+      await invoke<Voice>("make_voice_preview", { id });
+      setVersion((n) => n + 1);
+      await load();
+    } catch (e) {
+      setError(`Hörprobe nicht erstellt: ${e}`);
+    } finally {
+      setPreviewing((list) => list.filter((x) => x !== id));
+    }
+  }
+
+  async function chooseImage(voice: Voice) {
+    setError(null);
+    const file = await open({
+      multiple: false,
+      directory: false,
+      filters: [{ name: "Bild (PNG, JPG, WebP)", extensions: ["png", "jpg", "jpeg", "webp"] }],
+    });
+    if (typeof file !== "string") return;
+    try {
+      await invoke<Voice>("set_voice_image", { id: voice.id, file });
+      setVersion((n) => n + 1);
+      await load();
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   async function importVoice() {
     if (!pending) return;
     setImporting(true);
     setError(null);
     try {
-      await invoke<Voice>("import_voice", { name: pending.name, files: pending.files });
+      const voice = await invoke<Voice>("import_voice", { name: pending.name, files: pending.files });
       setPending(null);
       await load();
+      makePreview(voice.id);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -145,9 +192,18 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
         {(voices ?? []).map((v) => (
           <li key={v.id}>
             <div className="history-row">
-              <div className="voice-avatar" aria-hidden="true">
-                {v.name.charAt(0).toUpperCase()}
-              </div>
+              <button
+                className="voice-avatar"
+                onClick={() => chooseImage(v)}
+                aria-label={`Bild für ${v.name} wählen`}
+                title="Bild wählen"
+              >
+                {v.image ? (
+                  <img src={`${convertFileSrc(v.image)}?v=${version}`} alt="" />
+                ) : (
+                  v.name.charAt(0).toUpperCase()
+                )}
+              </button>
               {editing?.id === v.id ? (
                 <div className="history-name">
                   <input
@@ -166,8 +222,19 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
                 <div className="history-name">
                   <strong>{v.name}</strong>
                   <span className="muted">
-                    {v.index ? "mit Index" : "ohne Index"} · importiert am {DATE.format(new Date(v.created * 1000))}
+                    {v.note ?? `${v.index ? "mit Index" : "ohne Index"} · importiert am ${DATE.format(new Date(v.created * 1000))}`}
                   </span>
+                  {v.preview ? (
+                    <audio
+                      className="voice-preview"
+                      controls
+                      preload="metadata"
+                      src={`${convertFileSrc(v.preview)}?v=${version}`}
+                      aria-label={`Hörprobe ${v.name}`}
+                    />
+                  ) : previewing.includes(v.id) ? (
+                    <span className="muted small">Hörprobe entsteht …</span>
+                  ) : null}
                 </div>
               )}
               {editing?.id === v.id ? (
@@ -180,6 +247,9 @@ export default function VoicesPage({ onUse }: { onUse: (id: string) => void }) {
               ) : (
                 <>
                   <button onClick={() => onUse(v.id)}>Benutzen</button>
+                  <button className="ghost" onClick={() => makePreview(v.id)} disabled={previewing.includes(v.id)}>
+                    {v.preview ? "Neue Hörprobe" : "Hörprobe erzeugen"}
+                  </button>
                   <button className="ghost" onClick={() => setEditing({ id: v.id, name: v.name })}>
                     Umbenennen
                   </button>

@@ -17,6 +17,7 @@ und SHA-256-Prüfsumme festgelegt, in den Datenordner `%LOCALAPPDATA%\de.tunas.t
 | Python | 3.12 (über uv) | PSF | https://www.python.org |
 | FluidSynth | 2.6.1 (in `engine/.tools`) | LGPL-2.1 | https://github.com/FluidSynth/fluidsynth |
 | mido | 1.3.3 | MIT | https://github.com/mido/mido |
+| yt-dlp | 2026.08.19 (in `engine/.tools`; aktualisiert sich bei Bedarf selbst) | Unlicense | https://github.com/yt-dlp/yt-dlp |
 | ACE-Step 1.5 | v0.1.8 (eigene Umgebung in `engine/vendor/ace-step`, PyTorch 2.7.1 cu128) | MIT | https://github.com/ace-step/ACE-Step-1.5 |
 
 Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
@@ -30,6 +31,7 @@ Modelle (Download beim Einrichten bzw. beim ersten Gebrauch):
 | ACE-Step 1.5: acestep-v15-turbo (DiT), VAE, acestep-5Hz-lm-0.6B | Lied und Instrumental erzeugen | Hugging Face ACE-Step, **MIT** (`tools/setup-acestep.ps1`, ca. 7,4 GB in `models/ace-step`) |
 | Qwen3-Embedding-0.6B (Teil des ACE-Step-Pakets) | Text-Encoder für ACE-Step | Qwen, Apache-2.0 |
 | **GeneralUser GS v2.0.3** (SF2, 261 Instrumente) | alle weiteren Instrumente im Noten-Modus | S. Christian Collins, eigene freie Lizenz (Nutzung ohne Einschränkung, auch in Software), https://www.schristiancollins.com/generaluser |
+| **LibriTTS-R** (dev-clean) | Beispielsatz der Hörproben (`engine/tunify_engine/assets/demo.flac`, Sprecher 1462) und Trainingsdaten der mitgelieferten Stimmen „Klara“ (Sprecherinnen 84, 7850, 6313) und „Jonas“ (Sprecher 8297, 251, 3000), je 5 min pro Person gemischt | Koizumi et al., Google; nach LibriVox (gemeinfrei); **CC BY 4.0**, https://www.openslr.org/141/ |
 
 Bei Applio gelten zusätzlich dessen Nutzungsbedingungen (`engine/vendor/applio/TERMS_OF_USE.md`):
 nur Audio verwenden, an dem man die Rechte hat.

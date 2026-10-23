@@ -49,6 +49,67 @@ pub fn status() -> Status {
     Status { core, music, folder: root.to_string_lossy().to_string() }
 }
 
+/// Grafikkarte, bevor etwas geladen wird: Der Motor braucht eine NVIDIA-Karte mit CUDA.
+#[derive(serde::Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Gpu {
+    pub name: Option<String>,
+    pub vram_gb: f32,
+    pub driver: String,
+    /// Grund, warum Tunify hier kaum brauchbar läuft (keine Karte, zu wenig Speicher, alter Treiber)
+    pub problem: Option<String>,
+    /// Hinweis nur für „Musik erzeugen“ (braucht mehr Grafikspeicher)
+    pub music_warning: Option<String>,
+}
+
+/// CUDA 12.8 (PyTorch cu128) läuft ab diesem Windows-Treiber
+const MIN_DRIVER: f32 = 528.33;
+const MIN_VRAM_GB: f32 = 4.0;
+const MUSIC_VRAM_GB: f32 = 8.0;
+
+pub fn gpu() -> Gpu {
+    let mut command = Command::new("nvidia-smi");
+    command.args(["--query-gpu=name,memory.total,driver_version", "--format=csv,noheader,nounits"]);
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
+    let output = command.output().ok().filter(|o| o.status.success());
+    parse_gpu(&output.map(|o| String::from_utf8_lossy(&o.stdout).to_string()).unwrap_or_default())
+}
+
+/// Erste Zeile von `nvidia-smi --query-gpu=name,memory.total,driver_version` (MiB) auswerten.
+fn parse_gpu(text: &str) -> Gpu {
+    let fields: Vec<&str> = text.lines().next().unwrap_or("").split(',').map(str::trim).collect();
+    let [name, mib, driver] = fields[..] else {
+        return Gpu {
+            name: None,
+            vram_gb: 0.0,
+            driver: String::new(),
+            problem: Some(
+                "Keine NVIDIA-Grafikkarte gefunden. Tunify Music braucht eine NVIDIA-Karte mit mindestens 4 GB \
+                 Grafikspeicher und aktuellem Treiber – ohne läuft der KI-Motor nur sehr langsam oder gar nicht."
+                    .into(),
+            ),
+            music_warning: None,
+        };
+    };
+    let vram_gb = (mib.parse::<f32>().unwrap_or(0.0) / 1024.0 * 10.0).round() / 10.0;
+    let driver_number = driver.split('.').take(2).collect::<Vec<_>>().join(".").parse::<f32>().unwrap_or(0.0);
+    let problem = if vram_gb < MIN_VRAM_GB {
+        Some(format!("{name} hat nur {vram_gb} GB Grafikspeicher; Tunify Music braucht mindestens 4 GB."))
+    } else if driver_number < MIN_DRIVER {
+        Some(format!(
+            "Der Grafiktreiber ({driver}) ist zu alt. Bitte zuerst den aktuellen NVIDIA-Treiber installieren \
+             (mindestens {MIN_DRIVER})."
+        ))
+    } else {
+        None
+    };
+    let music_warning = (vram_gb < MUSIC_VRAM_GB).then(|| {
+        format!("Musik erzeugen braucht etwa 8 GB Grafikspeicher; mit {vram_gb} GB kann es sehr langsam werden oder abbrechen.")
+    });
+    Gpu { name: Some(name.to_string()), vram_gb, driver: driver.to_string(), problem, music_warning }
+}
+
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(to)?;
     for entry in std::fs::read_dir(from)? {
@@ -198,7 +259,20 @@ pub fn cancel() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::error_text;
+    use super::{error_text, parse_gpu};
+
+    #[test]
+    fn grafikkarte_bewerten() {
+        let ok = parse_gpu("NVIDIA GeForce RTX 5070 Laptop GPU, 8151, 595.97\n");
+        assert_eq!(ok.name.as_deref(), Some("NVIDIA GeForce RTX 5070 Laptop GPU"));
+        assert_eq!(ok.vram_gb, 8.0);
+        assert!(ok.problem.is_none() && ok.music_warning.is_none());
+        let small = parse_gpu("NVIDIA GeForce GTX 1060, 6144, 560.94");
+        assert!(small.problem.is_none() && small.music_warning.is_some());
+        assert!(parse_gpu("NVIDIA GeForce GT 1030, 2048, 560.94").problem.is_some());
+        assert!(parse_gpu("NVIDIA GeForce RTX 3060, 12288, 472.12").problem.unwrap().contains("Treiber"));
+        assert!(parse_gpu("").problem.unwrap().contains("Keine NVIDIA"));
+    }
 
     #[test]
     fn fehlertext_mit_werkzeugmeldung() {

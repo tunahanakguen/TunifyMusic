@@ -1,7 +1,8 @@
 //! Stimmen-Bibliothek: RVC-Modelle (.pth, optional .index) im App-Datenordner.
 //!
 //! Jede Stimme liegt in `voices/<id>/` mit `model.pth`, optional `model.index` und `voice.json`
-//! (Anzeigename, Erstellzeit). Importiert werden einzelne Dateien oder ein ZIP-Archiv.
+//! (Anzeigename, Erstellzeit, Tonlage, Herkunft), dazu optional `cover.<png|jpg|webp>` (Bild) und
+//! `preview.mp3` (Hörprobe). Importiert werden einzelne Dateien oder ein ZIP-Archiv.
 
 use std::path::{Path, PathBuf};
 
@@ -10,6 +11,12 @@ struct Meta {
     name: String,
     created: u64,
     has_index: bool,
+    /// mittlere Tonhöhe der Trainingsdaten in Hz (nur bei hier trainierten oder mitgelieferten Stimmen)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    f0: Option<f32>,
+    /// Herkunft, z. B. bei mitgelieferten Stimmen Datensatz und Lizenz
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    note: Option<String>,
 }
 
 #[derive(serde::Serialize, Debug)]
@@ -21,11 +28,18 @@ pub struct Voice {
     pub index: Option<String>,
     /// Sekunden seit 1970
     pub created: u64,
+    pub f0: Option<f32>,
+    pub note: Option<String>,
+    pub image: Option<String>,
+    pub preview: Option<String>,
 }
 
 const MODEL: &str = "model.pth";
 const INDEX: &str = "model.index";
 const META: &str = "voice.json";
+const PREVIEW: &str = "preview.mp3";
+pub const IMAGE_EXTENSIONS: [&str; 4] = ["png", "jpg", "jpeg", "webp"];
+const MAX_IMAGE_BYTES: u64 = 10_000_000;
 /// Kleiner ist kein RVC-Modell, größer eher ein Trainings-Zwischenstand (G_/D_)
 const MIN_MODEL_BYTES: u64 = 1_000_000;
 const MAX_MODEL_BYTES: u64 = 600_000_000;
@@ -58,20 +72,38 @@ fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
 }
 
+fn read_meta(folder: &Path) -> Option<Meta> {
+    serde_json::from_str(&std::fs::read_to_string(folder.join(META)).ok()?).ok()
+}
+
+fn write_meta(folder: &Path, meta: &Meta) -> Result<(), String> {
+    std::fs::write(folder.join(META), serde_json::to_string_pretty(meta).unwrap()).map_err(|e| e.to_string())
+}
+
+fn image_of(folder: &Path) -> Option<PathBuf> {
+    IMAGE_EXTENSIONS.iter().map(|ext| folder.join(format!("cover.{ext}"))).find(|p| p.exists())
+}
+
 fn read(dir: &Path, id: &str) -> Option<Voice> {
     let folder = dir.join(id);
-    let meta: Meta = serde_json::from_str(&std::fs::read_to_string(folder.join(META)).ok()?).ok()?;
+    let meta = read_meta(&folder)?;
     let model = folder.join(MODEL);
     if !model.exists() {
         return None;
     }
     let index = folder.join(INDEX);
+    let preview = folder.join(PREVIEW);
+    let text = |p: PathBuf| p.to_string_lossy().to_string();
     Some(Voice {
         id: id.to_string(),
         name: meta.name,
-        model: model.to_string_lossy().to_string(),
-        index: (meta.has_index && index.exists()).then(|| index.to_string_lossy().to_string()),
+        model: text(model),
+        index: (meta.has_index && index.exists()).then(|| text(index)),
         created: meta.created,
+        f0: meta.f0,
+        note: meta.note,
+        image: image_of(&folder).map(text),
+        preview: preview.exists().then(|| text(preview)),
     })
 }
 
@@ -183,8 +215,7 @@ fn import_files(dir: &Path, name: &str, candidates: &[PathBuf]) -> Result<Voice,
         if let Some(index) = index {
             std::fs::copy(index, folder.join(INDEX)).map_err(|e| format!("Index nicht kopiert: {e}"))?;
         }
-        let meta = Meta { name: name.to_string(), created: now(), has_index: index.is_some() };
-        std::fs::write(folder.join(META), serde_json::to_string_pretty(&meta).unwrap()).map_err(|e| e.to_string())
+        write_meta(&folder, &Meta { name: name.to_string(), created: now(), has_index: index.is_some(), f0: None, note: None })
     };
     if let Err(e) = copy() {
         let _ = std::fs::remove_dir_all(&folder);
@@ -199,9 +230,86 @@ pub fn rename(dir: &Path, id: &str, name: &str) -> Result<Voice, String> {
     if name.is_empty() {
         return Err("Der Name darf nicht leer sein".into());
     }
-    let meta = Meta { name: name.to_string(), created: voice.created, has_index: voice.index.is_some() };
-    std::fs::write(dir.join(id).join(META), serde_json::to_string_pretty(&meta).unwrap()).map_err(|e| e.to_string())?;
+    let folder = dir.join(id);
+    let mut meta = read_meta(&folder).ok_or("voice.json fehlt")?;
+    meta.name = name.to_string();
+    meta.has_index = voice.index.is_some();
+    write_meta(&folder, &meta)?;
     get(dir, id)
+}
+
+/// Mittlere Tonhöhe merken (nach dem Training).
+pub fn set_f0(dir: &Path, id: &str, f0: f32) -> Result<Voice, String> {
+    get(dir, id)?;
+    let folder = dir.join(id);
+    let mut meta = read_meta(&folder).ok_or("voice.json fehlt")?;
+    meta.f0 = Some(f0);
+    write_meta(&folder, &meta)?;
+    get(dir, id)
+}
+
+/// Bild der Stimme setzen (PNG, JPG oder WebP, höchstens 10 MB); ersetzt ein vorhandenes.
+pub fn set_image(dir: &Path, id: &str, file: &Path) -> Result<Voice, String> {
+    get(dir, id)?;
+    let ext = file.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    if !IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+        return Err("Bitte ein Bild als PNG, JPG oder WebP wählen".into());
+    }
+    let bytes = std::fs::metadata(file).map_err(|e| format!("Bild nicht lesbar: {e}"))?.len();
+    if bytes > MAX_IMAGE_BYTES {
+        return Err("Das Bild ist größer als 10 MB".into());
+    }
+    let folder = dir.join(id);
+    if let Some(old) = image_of(&folder) {
+        std::fs::remove_file(old).map_err(|e| e.to_string())?;
+    }
+    let ext = if ext == "jpeg" { "jpg".to_string() } else { ext };
+    std::fs::copy(file, folder.join(format!("cover.{ext}"))).map_err(|e| format!("Bild nicht kopiert: {e}"))?;
+    get(dir, id)
+}
+
+/// Pfad, unter dem der Motor die Hörprobe ablegt.
+pub fn preview_path(dir: &Path, id: &str) -> Result<PathBuf, String> {
+    get(dir, id)?;
+    Ok(dir.join(id).join(PREVIEW))
+}
+
+/// Mitgelieferte Stimmen (`<bundled>/<id>/`) einmalig in die Bibliothek übernehmen. Was der Nutzer danach
+/// löscht, kommt nicht wieder: übernommene Ordner merkt sich `record` (bundled.json).
+pub fn install_bundled(dir: &Path, bundled: &Path, record: &Path) -> Vec<String> {
+    let mut done: Vec<String> = std::fs::read_to_string(record)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default();
+    let Ok(entries) = std::fs::read_dir(bundled) else { return Vec::new() };
+    let mut added = Vec::new();
+    for entry in entries.flatten() {
+        let id = entry.file_name().to_string_lossy().to_string();
+        let source = entry.path();
+        if !valid_id(&id) || done.contains(&id) || dir.join(&id).exists() || read_meta(&source).is_none() {
+            continue;
+        }
+        let target = dir.join(&id);
+        let copy = || -> std::io::Result<()> {
+            std::fs::create_dir_all(&target)?;
+            for file in std::fs::read_dir(&source)?.flatten() {
+                if file.path().is_file() {
+                    std::fs::copy(file.path(), target.join(file.file_name()))?;
+                }
+            }
+            Ok(())
+        };
+        if copy().is_ok() {
+            done.push(id.clone());
+            added.push(id);
+        } else {
+            let _ = std::fs::remove_dir_all(&target);
+        }
+    }
+    if !added.is_empty() {
+        let _ = std::fs::write(record, serde_json::to_string_pretty(&done).unwrap());
+    }
+    added
 }
 
 /// Löscht die Kopie in der Bibliothek (nicht die ursprünglich importierten Dateien).
@@ -254,6 +362,39 @@ mod tests {
         assert_eq!(list(&lib).len(), 1);
         assert!(src.join("sänger_200e.pth").exists(), "Original bleibt erhalten");
         assert!(delete(&lib, "../src").is_err(), "nur Ordner der Bibliothek");
+
+        std::fs::remove_dir_all(&src).unwrap();
+        std::fs::remove_dir_all(&lib).unwrap();
+    }
+
+    #[test]
+    fn bild_tonlage_und_mitgelieferte() {
+        let src = temp("extra");
+        let lib = temp("extralib");
+        fake_file(&src.join("s.pth"), 2_000_000);
+        let voice = import(&lib, "Probe", &[src.join("s.pth").to_string_lossy().to_string()]).unwrap();
+        assert!(voice.image.is_none() && voice.preview.is_none() && voice.f0.is_none());
+
+        fake_file(&src.join("bild.JPEG"), 100);
+        fake_file(&src.join("bild.png"), 100);
+        assert!(set_image(&lib, "probe", &src.join("bild.JPEG")).unwrap().image.unwrap().ends_with("cover.jpg"));
+        let voice = set_image(&lib, "probe", &src.join("bild.png")).unwrap();
+        assert!(voice.image.unwrap().ends_with("cover.png"));
+        assert!(!lib.join("probe/cover.jpg").exists(), "altes Bild ersetzt");
+        fake_file(&src.join("text.txt"), 100);
+        assert!(set_image(&lib, "probe", &src.join("text.txt")).is_err());
+
+        assert_eq!(set_f0(&lib, "probe", 210.5).unwrap().f0, Some(210.5));
+        assert_eq!(rename(&lib, "probe", "Neu").unwrap().f0, Some(210.5), "Umbenennen behält die Tonlage");
+
+        let bundled = src.join("bundled");
+        fake_file(&bundled.join("anna/model.pth"), 2_000_000);
+        std::fs::write(bundled.join("anna/voice.json"), r#"{"name":"Anna","created":1,"has_index":false,"note":"frei"}"#).unwrap();
+        let record = lib.join("bundled.json");
+        assert_eq!(install_bundled(&lib, &bundled, &record), vec!["anna".to_string()]);
+        assert_eq!(get(&lib, "anna").unwrap().note.as_deref(), Some("frei"));
+        delete(&lib, "anna").unwrap();
+        assert!(install_bundled(&lib, &bundled, &record).is_empty(), "gelöschte kommt nicht wieder");
 
         std::fs::remove_dir_all(&src).unwrap();
         std::fs::remove_dir_all(&lib).unwrap();
