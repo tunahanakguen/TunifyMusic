@@ -36,7 +36,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Bauen fehlgeschlagen' }
 } finally {
     Pop-Location
-    Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+    Remove-Item Env:TAURI_SIGNING_PRIVATE_KEY, Env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD -ErrorAction SilentlyContinue
 }
 
 $bundle = Join-Path $app "src-tauri\target\release\bundle\nsis"
