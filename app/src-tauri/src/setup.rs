@@ -40,6 +40,22 @@ pub fn status() -> Status {
     Status { core, folder: root.to_string_lossy().to_string() }
 }
 
+/// Reste von „Musik erzeugen“ (bis 0.2.1, ca. 14 GB) aus dem Datenordner löschen – das macht jetzt TUNA-Step.
+/// Die Markierung `ready-music.txt` fällt zuletzt, damit ein unterbrochenes Löschen beim nächsten Start weitergeht.
+pub fn remove_music(root: &Path) {
+    let marker = root.join("ready-music.txt");
+    let dirs = [root.join("engine").join("vendor").join("ace-step"), root.join("models").join("ace-step")];
+    if !marker.exists() && !dirs.iter().any(|d| d.exists()) {
+        return;
+    }
+    for dir in &dirs {
+        if dir.exists() && std::fs::remove_dir_all(dir).is_err() {
+            return;
+        }
+    }
+    let _ = std::fs::remove_file(marker);
+}
+
 /// Grafikkarte, bevor etwas geladen wird: Der Motor braucht eine NVIDIA-Karte mit CUDA.
 #[derive(serde::Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -239,7 +255,30 @@ pub fn cancel() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{error_text, parse_gpu};
+    use super::{error_text, parse_gpu, remove_music};
+
+    #[test]
+    fn musik_reste_entfernen() {
+        let root = std::env::temp_dir().join(format!("tunify-musik-{}", std::process::id()));
+        let ace = root.join("engine").join("vendor").join("ace-step").join(".venv");
+        let applio = root.join("engine").join("vendor").join("applio");
+        let models = root.join("models").join("ace-step").join("acestep-5Hz-lm-0.6B");
+        let rmvpe = root.join("models").join("rmvpe");
+        for dir in [&ace, &applio, &models, &rmvpe] {
+            std::fs::create_dir_all(dir).unwrap();
+        }
+        std::fs::write(ace.join("python.exe"), b"x").unwrap();
+        std::fs::write(root.join("ready-music.txt"), b"x").unwrap();
+        std::fs::write(root.join("ready-core.txt"), b"x").unwrap();
+        remove_music(&root);
+        assert!(!root.join("engine").join("vendor").join("ace-step").exists());
+        assert!(!root.join("models").join("ace-step").exists());
+        assert!(!root.join("ready-music.txt").exists());
+        // der Rest des Motors bleibt
+        assert!(applio.exists() && rmvpe.exists() && root.join("ready-core.txt").exists());
+        remove_music(&root);
+        std::fs::remove_dir_all(&root).unwrap();
+    }
 
     #[test]
     fn grafikkarte_bewerten() {

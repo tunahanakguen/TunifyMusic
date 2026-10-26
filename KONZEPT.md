@@ -142,7 +142,7 @@ TunifyMusic/
 | 6b | Ergänzungen ✓ (23.10.2026): Gesang trennen (Gesang + Begleitung, BS-Roformer); YouTube-Link als Eingabe (yt-dlp, nur einzelne Videos bis 20 min, aktualisiert sich bei Fehlern selbst); Stimmen mit Bild und Hörprobe (Beispielsatz aus LibriTTS-R, Tonhöhe passend zur mittleren Tonlage der Stimme, die das Training jetzt mitspeichert); zwei mitgelieferte Stimmen; Grafikkarten-Prüfung vor dem Einrichten (nvidia-smi: Karte, ab 4 GB, Treiber ab 528.33; Hinweis bei unter 8 GB für Musik erzeugen) |
 | 6c | Updates ✓ (23.10.2026): öffentliches Repo github.com/tunahanakguen/TunifyMusic, Tauri-Updater (signiert, Schlüssel in %USERPROFILE%\.tauri), Hinweis „Jetzt aktualisieren“ beim Start, Release mit `tools/release.ps1` |
 | 6d | Audio bereinigen ✓ (26.10.2026): eigener Bereich ohne Stimmwechsel – Begleitmusik (BS-Roformer), Hall/Echo (UVR-DeEcho-DeReverb), Rauschen (UVR-DeNoise) frei kombinierbar, eine Datei als Ergebnis |
-| 6e | „Lied/Instrumental erzeugen“ ausgebaut (26.10.2026): übernimmt TUNA-Step. Weg sind Seite, Befehl `song`, ACE-Step-Skripte, Einrichtungsteil „Musik“ und der 8-GB-Hinweis; die Einrichtung hat nur noch einen Teil |
+| 6e | „Lied/Instrumental erzeugen“ ausgebaut (26.10.2026): übernimmt TUNA-Step. Weg sind Seite, Befehl `song`, ACE-Step-Skripte, Einrichtungsteil „Musik“ und der 8-GB-Hinweis; die Einrichtung hat nur noch einen Teil. Version 0.2.2 löscht beim Start die alten ACE-Step-Daten (`engine/vendor/ace-step`, `models/ace-step`, `ready-music.txt`) |
 
 ## Erkenntnisse aus Phase 1 (20.10.2026)
 

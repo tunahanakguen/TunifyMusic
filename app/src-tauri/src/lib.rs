@@ -658,6 +658,8 @@ pub fn run() {
             if engine::data_root().join("engine").exists() {
                 let _ = setup::install_sources(&setup::sources_dir(app.path().resource_dir().ok()));
             }
+            // Lied/Instrumental erzeugen gibt es nicht mehr: alte ACE-Step-Daten nebenher löschen
+            std::thread::spawn(|| setup::remove_music(&engine::data_root()));
             if let Ok(library) = voices_dir(app.handle()) {
                 let record = library.parent().unwrap_or(&library).join("bundled.json");
                 voices::install_bundled(&library, &bundled_voices(app), &record);
