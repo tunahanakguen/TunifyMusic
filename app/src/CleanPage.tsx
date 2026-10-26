@@ -188,7 +188,7 @@ export default function CleanPage() {
         {error && <p className="error">{error}</p>}
         {cancelled && <p className="muted">Abgebrochen.</p>}
         {result && (
-          <div className="result">
+          <div className="result" ref={(el) => el?.scrollIntoView({ behavior: "smooth", block: "end" })}>
             <p>
               <strong>{fileName(result.output)}</strong>
             </p>
