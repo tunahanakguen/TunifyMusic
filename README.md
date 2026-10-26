@@ -15,6 +15,7 @@ Hintergrund, Bausteine und Fahrplan: [KONZEPT.md](KONZEPT.md) · Fremde Baustein
 |---|---|
 | **Stimme umwandeln** | Datei, Mikrofon-Aufnahme oder YouTube-Link → mit einer anderen Stimme singen (RVC) oder als Instrument nachspielen (Klavier, Geige, Flöte … aus den Noten). Begleitmusik, Hall und Rauschen entfernen, Begleitung transponiert wieder dazumischen (Cover). Ausgabe als WAV, MP3 oder FLAC, Noten auch als MIDI. |
 | **Gesang trennen** | Lied in Gesang und Begleitung aufteilen (Karaoke, Remix). Mehr Spuren trennt ein eigenes TUNAS-Programm. |
+| **Audio bereinigen** | Ohne Stimmwechsel: Begleitmusik, Hall/Echo und Rauschen aus einer Aufnahme oder einem Lied entfernen, frei kombinierbar. |
 | **Stimmen** | Bibliothek: RVC-Stimmen importieren (.pth/.index/.zip), mit Bild und Hörprobe. Zwei freie Stimmen sind dabei. |
 | **Stimme trainieren** | Eigene Stimme aus Aufnahmen trainieren; jede Aufnahme wird vorher bewertet (Länge, Pegel, Rauschen …). |
 | **Lied erzeugen** | Lied mit Text aus einer Beschreibung (ACE-Step 1.5), optional in einer eigenen Stimme und mit Stilvorlage. |
@@ -87,6 +88,7 @@ Motor per Kommandozeile (aus `engine\`, Ausgabe als JSON-Zeilen):
 
 ```powershell
 .venv\Scripts\python -m tunify_engine convert lied.mp3 --model stimme.pth --isolate-vocals --dereverb --mix-instrumental --out cover.mp3
+.venv\Scripts\python -m tunify_engine clean aufnahme.m4a --dereverb --denoise --out sauber.wav
 .venv\Scripts\python -m tunify_engine separate lied.mp3 --vocals gesang.wav --instrumental begleitung.wav
 .venv\Scripts\python -m tunify_engine notes summen.wav --instrument geige --out geige.wav --midi geige.mid
 .venv\Scripts\python -m tunify_engine song --caption "Lofi, Klavier, Regen" --instrumental --duration 30 --out lofi.wav

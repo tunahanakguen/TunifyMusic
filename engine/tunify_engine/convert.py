@@ -158,6 +158,37 @@ def preview(args) -> None:
     ))
 
 
+def clean(args) -> None:
+    """Audio bereinigen (wie Musicfys Werkzeuge ohne Stimmwechsel): Begleitmusik, Hall/Echo, Rauschen entfernen."""
+    source = Path(args.input).resolve()
+    out = Path(args.out).resolve()
+    if not source.is_file():
+        raise FileNotFoundError(f"Eingabe fehlt: {source}")
+    if not (args.isolate_vocals or args.dereverb or args.denoise):
+        raise ValueError("Bitte mindestens einen Schritt wählen")
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.TemporaryDirectory(prefix="tunify_") as tmp:
+        work = Path(tmp)
+        current = work / "input.wav"
+        protocol.progress("load", 2, "Datei einlesen")
+        _to_wav(source, current)
+        if args.isolate_vocals:
+            protocol.progress("isolate", 10, _isolate_message("Begleitmusik entfernen", current))
+            current, _ = _separate(VOCALS_MODEL, current, work, keep="Vocals")
+        if args.dereverb:
+            protocol.progress("dereverb", 45, "Hall und Echo entfernen")
+            current, _ = _separate(DEREVERB_MODEL, current, work, keep="No Reverb")
+        if args.denoise:
+            protocol.progress("denoise", 75, "Rauschen reduzieren")
+            current, _ = _separate(DENOISE_MODEL, current, work, keep="No Noise")
+        protocol.progress("save", 95, "Speichern")
+        _save(current, out)
+
+    protocol.progress("done", 100, "Fertig")
+    protocol.emit("result", output=str(out))
+
+
 def separate(args) -> None:
     """Gesang und Begleitung trennen (wie Musicfys „Vocal Remover“). Mehr Spuren macht ein eigenes Programm."""
     source = Path(args.input).resolve()

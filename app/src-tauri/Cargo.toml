@@ -1,6 +1,6 @@
 [package]
 name = "tunify-music"
-version = "0.2.0"
+version = "0.2.1"
 description = "Tunify Music – Stimme und Musik lokal umwandeln"
 authors = ["Tunahan A."]
 license = "GPL-3.0-or-later"

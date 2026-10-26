@@ -53,6 +53,13 @@ def build_parser() -> argparse.ArgumentParser:
     sep.add_argument("--vocals", required=True, help="Ausgabe Gesang (.wav, .mp3, .flac)")
     sep.add_argument("--instrumental", required=True, help="Ausgabe Begleitung (.wav, .mp3, .flac)")
 
+    cl = sub.add_parser("clean", help="Audio bereinigen: Begleitmusik, Hall/Echo, Rauschen entfernen")
+    cl.add_argument("input", help="Eingabedatei (MP3, WAV, …)")
+    cl.add_argument("--isolate-vocals", action="store_true", help="Begleitmusik entfernen")
+    cl.add_argument("--dereverb", action="store_true", help="Hall/Echo entfernen")
+    cl.add_argument("--denoise", action="store_true", help="Rauschen reduzieren")
+    cl.add_argument("--out", required=True, help="Ausgabedatei (.wav, .mp3, .flac)")
+
     pv = sub.add_parser("preview", help="Hörprobe einer Stimme erzeugen (Beispielsatz umwandeln)")
     pv.add_argument("--model", required=True, help="RVC-Modell (.pth)")
     pv.add_argument("--index", default="", help="Index-Datei (.index), optional")
@@ -123,6 +130,9 @@ def dispatch(args) -> None:
     elif args.command == "separate":
         from .convert import separate
         separate(args)
+    elif args.command == "clean":
+        from .convert import clean
+        clean(args)
     elif args.command == "preview":
         from .convert import preview
         preview(args)

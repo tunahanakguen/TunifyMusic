@@ -252,6 +252,54 @@ async fn fetch_youtube(app: AppHandle, url: String) -> Result<String, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Einstellungen für „Audio bereinigen“.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CleanRequest {
+    input: String,
+    isolate_vocals: bool,
+    dereverb: bool,
+    denoise: bool,
+    /// "wav", "mp3" oder "flac"
+    format: String,
+}
+
+/// Begleitmusik, Hall/Echo und Rauschen entfernen, ohne die Stimme zu ändern. Fortschritt als `engine-progress`.
+#[tauri::command]
+async fn clean_audio(app: AppHandle, request: CleanRequest) -> Result<serde_json::Value, String> {
+    if !FORMATS.contains(&request.format.as_str()) {
+        return Err(format!("Unbekanntes Format: {}", request.format));
+    }
+    if !(request.isolate_vocals || request.dereverb || request.denoise) {
+        return Err("Bitte mindestens einen Schritt wählen".into());
+    }
+    let out = unique_output(&output_dir(&app)?, &request.input, "bereinigt", &request.format);
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = out.to_string_lossy().to_string();
+        let mut args = vec!["clean", request.input.as_str(), "--out", out.as_str()];
+        for (on, flag) in [
+            (request.isolate_vocals, "--isolate-vocals"),
+            (request.dereverb, "--dereverb"),
+            (request.denoise, "--denoise"),
+        ] {
+            if on {
+                args.push(flag);
+            }
+        }
+        let events = engine::run_job(&args, |event| {
+            if event["event"] == "progress" {
+                let _ = app.emit("engine-progress", event);
+            }
+        })?;
+        events
+            .into_iter()
+            .find(|e| e["event"] == "result")
+            .ok_or_else(|| "Motor hat kein Ergebnis gemeldet".to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Einstellungen für „Gesang trennen“.
 #[derive(serde::Deserialize)]
 struct SeparateRequest {
@@ -758,6 +806,7 @@ pub fn run() {
             save_recording,
             convert_instrument,
             separate_vocals,
+            clean_audio,
             fetch_youtube,
             list_voices,
             set_voice_image,

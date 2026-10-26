@@ -4,6 +4,7 @@ import { ThemeChoice, useTheme } from "./theme";
 import ConvertPage from "./ConvertPage";
 import HistoryPage from "./HistoryPage";
 import SeparatePage from "./SeparatePage";
+import CleanPage from "./CleanPage";
 import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
 import SongPage from "./SongPage";
@@ -23,6 +24,7 @@ const AREAS = [
   { id: "start", label: "Start", phase: "" },
   { id: "convert", label: "Stimme umwandeln", phase: "" },
   { id: "separate", label: "Gesang trennen", phase: "" },
+  { id: "clean", label: "Audio bereinigen", phase: "" },
   { id: "voices", label: "Stimmen", phase: "" },
   { id: "train", label: "Stimme trainieren", phase: "" },
   { id: "song", label: "Lied erzeugen", phase: "" },
@@ -170,6 +172,8 @@ export default function App() {
           />
         ) : area === "separate" ? (
           <SeparatePage />
+        ) : area === "clean" ? (
+          <CleanPage />
         ) : area === "voices" ? (
           <VoicesPage
             onUse={(voice) => {
