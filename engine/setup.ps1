@@ -1,7 +1,6 @@
 ﻿# Einrichtung von Tunify Music beim ersten Start (die App ruft das auf, mit Fortschrittsbalken).
 #
-#   setup.ps1 -Root <Datenordner> -Part core    Motor: Python, Pakete, Applio, Modelle, FFmpeg, FluidSynth, Klangsätze
-#   setup.ps1 -Root <Datenordner> -Part music   Lied/Instrumental erzeugen: ACE-Step mit eigener Umgebung und Modellen
+#   setup.ps1 -Root <Datenordner>    Motor: Python, Pakete, Applio, Modelle, FFmpeg, FluidSynth, Klangsätze, yt-dlp
 #
 # <Datenordner>\engine enthält schon den Motor-Quellcode (die App kopiert ihn hinein). Alles Weitere landet in
 # diesem Ordner, nichts systemweit. Jede Datei ist auf eine Version und eine SHA-256-Prüfsumme festgelegt.
@@ -9,8 +8,7 @@
 # Fortschritt auf stdout als Zeilen „@@ <Prozent> <Text>“.
 
 param(
-    [Parameter(Mandatory)][string]$Root,
-    [ValidateSet('core', 'music')][string]$Part = 'core'
+    [Parameter(Mandatory)][string]$Root
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,8 +50,6 @@ $SOURCES = @{
                      sha = '7B32EFEFDF95CE38A043799F0659853DDC00FBAA14D8C50F0ACA16B9B8B405BE' }
     ytdlp       = @{ url = 'https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe'
                      sha = '66674953FE251B89F4D08C5F0E35E0728679BD67AB3D7D05C0562AF101DD3E7A' }
-    acestep     = @{ url = 'https://github.com/ace-step/ACE-Step-1.5/archive/refs/tags/v0.1.8.zip'
-                     sha = '8C39E3E4C7C939ED8D3617E4FBE81585EC869276A228DA5D6080BB2C3E4C3DB0' }
 }
 
 function Step([int]$percent, [string]$text) {
@@ -94,7 +90,6 @@ function Run([string]$exe) {
     if ($LASTEXITCODE -ne 0) { throw "Fehlgeschlagen ($LASTEXITCODE): $exe $args" }
 }
 
-# uv und FFmpeg brauchen beide Teile
 $uv = Join-Path $tools 'uv\uv.exe'
 if (-not (Test-Path $uv)) {
     Step 1 'Werkzeuge laden (uv)'
@@ -107,91 +102,70 @@ if (-not (Test-Path (Join-Path $ffmpeg 'ffmpeg.exe'))) {
 }
 $env:Path = "$ffmpeg;$env:Path"
 
-if ($Part -eq 'core') {
-    $applio = Join-Path $engine 'vendor\applio'
-    if (-not (Test-Path (Join-Path $applio 'core.py'))) {
-        Step 8 'Applio (RVC) laden'
-        New-Item -ItemType Directory -Force (Join-Path $engine 'vendor') | Out-Null
-        Unpack (Fetch 'applio') $applio
-    }
+$applio = Join-Path $engine 'vendor\applio'
+if (-not (Test-Path (Join-Path $applio 'core.py'))) {
+    Step 8 'Applio (RVC) laden'
+    New-Item -ItemType Directory -Force (Join-Path $engine 'vendor') | Out-Null
+    Unpack (Fetch 'applio') $applio
+}
 
-    $ytdlp = Join-Path $tools 'yt-dlp\yt-dlp.exe'
-    if (-not (Test-Path $ytdlp)) {
-        Step 9 'yt-dlp laden (YouTube-Links)'
-        New-Item -ItemType Directory -Force (Split-Path $ytdlp) | Out-Null
-        Copy-Item (Fetch 'ytdlp') $ytdlp
-    }
+$ytdlp = Join-Path $tools 'yt-dlp\yt-dlp.exe'
+if (-not (Test-Path $ytdlp)) {
+    Step 9 'yt-dlp laden (YouTube-Links)'
+    New-Item -ItemType Directory -Force (Split-Path $ytdlp) | Out-Null
+    Copy-Item (Fetch 'ytdlp') $ytdlp
+}
 
-    $fluidsynth = Join-Path $tools 'fluidsynth'
-    if (-not (Test-Path (Join-Path $fluidsynth 'fluidsynth-v2.6.1-win10-x64-cpp11\bin\fluidsynth.exe'))) {
-        Step 10 'FluidSynth laden'
-        # notes.py erwartet den Ordner mit Versionsnamen darunter
-        New-Item -ItemType Directory -Force $fluidsynth | Out-Null
-        Unpack (Fetch 'fluidsynth') (Join-Path $fluidsynth 'fluidsynth-v2.6.1-win10-x64-cpp11')
-    }
+$fluidsynth = Join-Path $tools 'fluidsynth'
+if (-not (Test-Path (Join-Path $fluidsynth 'fluidsynth-v2.6.1-win10-x64-cpp11\bin\fluidsynth.exe'))) {
+    Step 10 'FluidSynth laden'
+    # notes.py erwartet den Ordner mit Versionsnamen darunter
+    New-Item -ItemType Directory -Force $fluidsynth | Out-Null
+    Unpack (Fetch 'fluidsynth') (Join-Path $fluidsynth 'fluidsynth-v2.6.1-win10-x64-cpp11')
+}
 
-    $salamander = Join-Path $models 'instruments\salamander'
-    if (-not (Test-Path (Join-Path $salamander 'SalamanderGrandPiano-SF2-V3+20200602\SalamanderGrandPiano-V3+20200602.sf2'))) {
-        Step 12 'Klavier-Klangsatz laden (Salamander, 300 MB)'
-        New-Item -ItemType Directory -Force $salamander | Out-Null
-        Unpack (Fetch 'salamander') (Join-Path $salamander 'SalamanderGrandPiano-SF2-V3+20200602') '-xJf'
-    }
-    $gu = Join-Path $models 'instruments\generaluser'
-    if (-not (Test-Path (Join-Path $gu 'GeneralUser-GS.sf2'))) {
-        Step 16 'Instrumente laden (GeneralUser GS)'
-        New-Item -ItemType Directory -Force $gu | Out-Null
-        Copy-Item (Fetch 'gu_license') (Join-Path $gu 'LICENSE.txt')
-        Copy-Item (Fetch 'generaluser') (Join-Path $gu 'GeneralUser-GS.sf2')
-    }
+$salamander = Join-Path $models 'instruments\salamander'
+if (-not (Test-Path (Join-Path $salamander 'SalamanderGrandPiano-SF2-V3+20200602\SalamanderGrandPiano-V3+20200602.sf2'))) {
+    Step 12 'Klavier-Klangsatz laden (Salamander, 300 MB)'
+    New-Item -ItemType Directory -Force $salamander | Out-Null
+    Unpack (Fetch 'salamander') (Join-Path $salamander 'SalamanderGrandPiano-SF2-V3+20200602') '-xJf'
+}
+$gu = Join-Path $models 'instruments\generaluser'
+if (-not (Test-Path (Join-Path $gu 'GeneralUser-GS.sf2'))) {
+    Step 16 'Instrumente laden (GeneralUser GS)'
+    New-Item -ItemType Directory -Force $gu | Out-Null
+    Copy-Item (Fetch 'gu_license') (Join-Path $gu 'LICENSE.txt')
+    Copy-Item (Fetch 'generaluser') (Join-Path $gu 'GeneralUser-GS.sf2')
+}
 
-    $python = Join-Path $engine '.venv\Scripts\python.exe'
-    if (-not (Test-Path (Join-Path $engine '.venv\installed.txt'))) {
-        Step 20 'Python einrichten'
-        Run $uv python install 3.12
-        if (-not (Test-Path $python)) { Run $uv venv --python 3.12 (Join-Path $engine '.venv') }
-        Step 25 'KI-Pakete laden (PyTorch mit CUDA, ca. 4 GB – das dauert)'
-        Run $uv pip install --python (Join-Path $engine '.venv') -r (Join-Path $engine 'requirements.lock.txt') `
-            --extra-index-url https://download.pytorch.org/whl/cu128 --index-strategy unsafe-best-match
-        Set-Content (Join-Path $engine '.venv\installed.txt') (Get-Date -Format s)
-    }
+$python = Join-Path $engine '.venv\Scripts\python.exe'
+if (-not (Test-Path (Join-Path $engine '.venv\installed.txt'))) {
+    Step 20 'Python einrichten'
+    Run $uv python install 3.12
+    if (-not (Test-Path $python)) { Run $uv venv --python 3.12 (Join-Path $engine '.venv') }
+    Step 25 'KI-Pakete laden (PyTorch mit CUDA, ca. 4 GB – das dauert)'
+    Run $uv pip install --python (Join-Path $engine '.venv') -r (Join-Path $engine 'requirements.lock.txt') `
+        --extra-index-url https://download.pytorch.org/whl/cu128 --index-strategy unsafe-best-match
+    Set-Content (Join-Path $engine '.venv\installed.txt') (Get-Date -Format s)
+}
 
-    Push-Location $engine
-    try {
-        Step 75 'Grundmodelle laden (RMVPE, ContentVec)'
-        Run $python -m tunify_engine prepare | Out-Null
-        Step 82 'Trainingsmodelle laden (HiFi-GAN)'
-        Push-Location $applio
-        try { Run $python core.py prerequisites --pretraineds-hifigan --no-models --no-exe | Out-Null }
-        finally { Pop-Location }
-        Step 92 'Gesang-Trennung vorbereiten (BS-Roformer)'
-        Run $python -c "from tunify_engine.convert import SEPARATOR_MODELS_DIR, VOCALS_MODEL; from audio_separator.separator import Separator; SEPARATOR_MODELS_DIR.mkdir(parents=True, exist_ok=True); Separator(model_file_dir=str(SEPARATOR_MODELS_DIR)).load_model(model_filename=VOCALS_MODEL)" | Out-Null
-        Step 98 'Prüfen'
-        Run $python -m tunify_engine info | Out-Null
-    }
+Push-Location $engine
+try {
+    Step 75 'Grundmodelle laden (RMVPE, ContentVec)'
+    Run $python -m tunify_engine prepare | Out-Null
+    Step 82 'Trainingsmodelle laden (HiFi-GAN)'
+    Push-Location $applio
+    try { Run $python core.py prerequisites --pretraineds-hifigan --no-models --no-exe | Out-Null }
     finally { Pop-Location }
+    Step 92 'Gesang-Trennung vorbereiten (BS-Roformer)'
+    Run $python -c "from tunify_engine.convert import SEPARATOR_MODELS_DIR, VOCALS_MODEL; from audio_separator.separator import Separator; SEPARATOR_MODELS_DIR.mkdir(parents=True, exist_ok=True); Separator(model_file_dir=str(SEPARATOR_MODELS_DIR)).load_model(model_filename=VOCALS_MODEL)" | Out-Null
+    Step 98 'Prüfen'
+    Run $python -m tunify_engine info | Out-Null
 }
-else {
-    $ace = Join-Path $engine 'vendor\ace-step'
-    if (-not (Test-Path (Join-Path $ace 'uv.lock'))) {
-        Step 5 'ACE-Step laden'
-        New-Item -ItemType Directory -Force (Join-Path $engine 'vendor') | Out-Null
-        Unpack (Fetch 'acestep') $ace
-    }
-    if (-not (Test-Path (Join-Path $ace '.venv\installed.txt'))) {
-        Step 10 'Pakete für ACE-Step laden (ca. 5 GB – das dauert)'
-        Push-Location $ace
-        try { Run $uv sync --frozen --python 3.12 }
-        finally { Pop-Location }
-        Set-Content (Join-Path $ace '.venv\installed.txt') (Get-Date -Format s)
-    }
-    Step 45 'Musikmodelle laden (ca. 7,4 GB – das dauert)'
-    $target = Join-Path $models 'ace-step'
-    New-Item -ItemType Directory -Force $target | Out-Null
-    Run (Join-Path $ace '.venv\Scripts\python.exe') -I (Join-Path $engine 'acestep_download.py') $target
-}
+finally { Pop-Location }
 
 # Downloads werden nicht mehr gebraucht (bei einem Neustart nach Fehler bleiben sie liegen)
 Remove-Item -Recurse -Force $downloads -ErrorAction SilentlyContinue
 # Erst dieses Zeichen schaltet die App auf den eingerichteten Motor um
-Set-Content (Join-Path $Root "ready-$Part.txt") (Get-Date -Format s)
+Set-Content (Join-Path $Root 'ready-core.txt') (Get-Date -Format s)
 Step 100 'Fertig'

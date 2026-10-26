@@ -24,8 +24,8 @@ Analyse von Musicfy (alle Bereiche): [notizen/musicfy-analyse.md](notizen/musicf
 | **Stimme umwandeln** | Convert Voice | RVC v2 | Kern, zuerst |
 | **Stimmen verwalten** | Stimmenliste, Copyright-Free, Instrumentals | Modellordner mit Vorschaubild und Hörprobe | mit dem Kern |
 | **Stimme trainieren** | My Voices | RVC-v2-Training | danach |
-| **Lied erzeugen** | Create a Song | ACE-Step 1.5, optional danach RVC („in meiner Stimme“) | später |
-| **Instrumental erzeugen** | Text to Instrumental | ACE-Step 1.5 (instrumental) | später |
+| ~~Lied erzeugen~~ | Create a Song | ACE-Step 1.5 | ausgelagert nach TUNA-Step (26.10.2026); in eigener Stimme: dort erzeugen, hier umwandeln |
+| ~~Instrumental erzeugen~~ | Text to Instrumental | ACE-Step 1.5 (instrumental) | ausgelagert nach TUNA-Step (26.10.2026) |
 | **Verlauf und Bibliothek** | History, Library | lokale Liste aller Ergebnisse, Favoriten | mit dem Kern |
 | Spuren trennen | Stem Splitter | BS-Roformer | nur Gesang + Begleitung („Gesang trennen“); mehr Spuren in eigenem Programm |
 | API | api.musicfy.lol | – | nicht nötig (alles lokal) |
@@ -54,6 +54,9 @@ Info: Name, Typ (Stimme / Instrument), Abtastrate 40 oder 48 kHz
 ```
 
 ## Lied und Instrumental erzeugen (wie Create a Song / Text to Instrumental)
+
+> Seit 26.10.2026 nicht mehr in Tunify Music, sondern im eigenen Programm TUNA-Step. Abschnitt bleibt als
+> Hintergrund stehen.
 
 - **Einfach:** Beschreibung, Instrumental ja/nein, Länge 45–240 s.
 - **Profi:** eigener Songtext (oder automatisch), Stil, Tempo, Taktart, Tonart, Schreibstil kreativ/wörtlich,
@@ -139,6 +142,7 @@ TunifyMusic/
 | 6b | Ergänzungen ✓ (23.10.2026): Gesang trennen (Gesang + Begleitung, BS-Roformer); YouTube-Link als Eingabe (yt-dlp, nur einzelne Videos bis 20 min, aktualisiert sich bei Fehlern selbst); Stimmen mit Bild und Hörprobe (Beispielsatz aus LibriTTS-R, Tonhöhe passend zur mittleren Tonlage der Stimme, die das Training jetzt mitspeichert); zwei mitgelieferte Stimmen; Grafikkarten-Prüfung vor dem Einrichten (nvidia-smi: Karte, ab 4 GB, Treiber ab 528.33; Hinweis bei unter 8 GB für Musik erzeugen) |
 | 6c | Updates ✓ (23.10.2026): öffentliches Repo github.com/tunahanakguen/TunifyMusic, Tauri-Updater (signiert, Schlüssel in %USERPROFILE%\.tauri), Hinweis „Jetzt aktualisieren“ beim Start, Release mit `tools/release.ps1` |
 | 6d | Audio bereinigen ✓ (26.10.2026): eigener Bereich ohne Stimmwechsel – Begleitmusik (BS-Roformer), Hall/Echo (UVR-DeEcho-DeReverb), Rauschen (UVR-DeNoise) frei kombinierbar, eine Datei als Ergebnis |
+| 6e | „Lied/Instrumental erzeugen“ ausgebaut (26.10.2026): übernimmt TUNA-Step. Weg sind Seite, Befehl `song`, ACE-Step-Skripte, Einrichtungsteil „Musik“ und der 8-GB-Hinweis; die Einrichtung hat nur noch einen Teil |
 
 ## Erkenntnisse aus Phase 1 (20.10.2026)
 

@@ -7,7 +7,6 @@ import SeparatePage from "./SeparatePage";
 import CleanPage from "./CleanPage";
 import VoicesPage from "./VoicesPage";
 import TrainPage from "./TrainPage";
-import SongPage from "./SongPage";
 import SetupPanel, { SetupStatus } from "./SetupPanel";
 import UpdateBanner from "./UpdateBanner";
 import "./App.css";
@@ -27,8 +26,6 @@ const AREAS = [
   { id: "clean", label: "Audio bereinigen", phase: "" },
   { id: "voices", label: "Stimmen", phase: "" },
   { id: "train", label: "Stimme trainieren", phase: "" },
-  { id: "song", label: "Lied erzeugen", phase: "" },
-  { id: "instrumental", label: "Instrumental erzeugen", phase: "" },
   { id: "history", label: "Verlauf", phase: "" },
 ];
 
@@ -120,7 +117,7 @@ export default function App() {
   useEffect(() => {
     invoke<SetupStatus>("setup_status")
       .then(setSetup)
-      .catch(() => setSetup({ core: true, music: true, folder: "" }));
+      .catch(() => setSetup({ core: true, folder: "" }));
   }, []);
   const needsSetup = setup !== null && !setup.core;
   return (
@@ -156,9 +153,9 @@ export default function App() {
           <>
             <h1>Willkommen</h1>
             <p className="muted">
-              Gesang und Melodien lokal umwandeln, Stimmen trainieren und Musik erzeugen – ohne Konto, ohne Limit.
+              Gesang und Melodien lokal umwandeln, Audio bereinigen und Stimmen trainieren – ohne Konto, ohne Limit.
             </p>
-            <SetupPanel part="core" onDone={setSetup} />
+            <SetupPanel onDone={setSetup} />
           </>
         ) : area === "convert" ? (
           <ConvertPage
@@ -192,19 +189,13 @@ export default function App() {
           <>
             <h1>Willkommen</h1>
             <p className="muted">
-              Gesang und Melodien lokal umwandeln, Stimmen trainieren und Musik erzeugen – ohne Konto, ohne Limit.
+              Gesang und Melodien lokal umwandeln, Audio bereinigen und Stimmen trainieren – ohne Konto, ohne Limit.
             </p>
             <button onClick={() => setArea("convert")}>Stimme umwandeln</button>
             <EngineStatus />
           </>
         ) : null}
-        {/* immer da, nur versteckt: Training und Lieder laufen weiter, während man andere Seiten nutzt */}
-        {setup?.core && (
-          <>
-            <SongPage instrumental={false} active={area === "song"} musicReady={setup.music} onSetup={setSetup} />
-            <SongPage instrumental active={area === "instrumental"} musicReady={setup.music} onSetup={setSetup} />
-          </>
-        )}
+        {/* immer da, nur versteckt: Training läuft weiter, während man andere Seiten nutzt */}
         <TrainPage
           active={area === "train"}
           onUse={(voice) => {

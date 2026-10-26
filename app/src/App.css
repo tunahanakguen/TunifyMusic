@@ -787,76 +787,10 @@ button.small-button {
   border-color: #1f9d55;
 }
 
-/* Lied / Instrumental erzeugen */
-textarea,
-select,
-input[type="number"] {
-  font: inherit;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 10px;
-}
-
-textarea {
-  width: 100%;
-  resize: vertical;
-  line-height: 1.45;
-}
-
-textarea:focus,
-select:focus,
-input[type="number"]:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 0;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-
-button.chip {
-  padding: 4px 10px;
-  font-size: 12px;
-  border-radius: 999px;
-}
-
 .field > span,
 .field > label {
   display: block;
   margin-bottom: 8px;
-}
-
-.field select {
-  min-width: 260px;
-}
-
-input[type="range"].full {
-  width: 100%;
-  accent-color: var(--accent);
-}
-
-.advanced-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.advanced-grid label {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-}
-
-.advanced-grid input,
-.advanced-grid select {
-  width: 100%;
-  min-width: 0;
 }
 
 .gpu-warning {

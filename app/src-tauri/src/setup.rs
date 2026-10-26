@@ -1,5 +1,5 @@
 //! Einrichtung beim ersten Start: kopiert den Motor-Quellcode in den Datenordner und führt `setup.ps1` aus,
-//! das Python, Pakete und Modelle lädt. Zwei Teile: `core` (alles außer Musik erzeugen) und `music` (ACE-Step).
+//! das Python, Pakete und Modelle lädt.
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader};
@@ -19,14 +19,12 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 static RUNNING: Mutex<Option<u32>> = Mutex::new(None);
 
 /// Quelldateien des Motors, die mit der App kommen (Rest lädt `setup.ps1`)
-const SOURCES: [&str; 5] = ["tunify_engine", "acestep_worker.py", "acestep_download.py", "requirements.lock.txt", "setup.ps1"];
+const SOURCES: [&str; 3] = ["tunify_engine", "requirements.lock.txt", "setup.ps1"];
 
 #[derive(serde::Serialize)]
 pub struct Status {
-    /// Umwandeln, Trainieren, Noten-Modus
+    /// Umwandeln, Trennen, Bereinigen, Trainieren, Noten-Modus
     pub core: bool,
-    /// Lied und Instrumental erzeugen
-    pub music: bool,
     pub folder: String,
 }
 
@@ -34,19 +32,12 @@ pub fn status() -> Status {
     let engine = engine::engine_dir();
     let root = engine::data_root();
     let installed = engine == root.join("engine");
-    let models = engine.parent().unwrap_or(&engine).join("models");
     let core = if installed {
         root.join("ready-core.txt").exists()
     } else {
         engine.join(".venv").join("Scripts").join("python.exe").exists()
     };
-    let music = if installed {
-        root.join("ready-music.txt").exists()
-    } else {
-        engine.join("vendor").join("ace-step").join(".venv").join("Scripts").join("python.exe").exists()
-            && models.join("ace-step").join("acestep-5Hz-lm-0.6B").exists()
-    };
-    Status { core, music, folder: root.to_string_lossy().to_string() }
+    Status { core, folder: root.to_string_lossy().to_string() }
 }
 
 /// Grafikkarte, bevor etwas geladen wird: Der Motor braucht eine NVIDIA-Karte mit CUDA.
@@ -58,14 +49,11 @@ pub struct Gpu {
     pub driver: String,
     /// Grund, warum Tunify hier kaum brauchbar läuft (keine Karte, zu wenig Speicher, alter Treiber)
     pub problem: Option<String>,
-    /// Hinweis nur für „Musik erzeugen“ (braucht mehr Grafikspeicher)
-    pub music_warning: Option<String>,
 }
 
 /// CUDA 12.8 (PyTorch cu128) läuft ab diesem Windows-Treiber
 const MIN_DRIVER: f32 = 528.33;
 const MIN_VRAM_GB: f32 = 4.0;
-const MUSIC_VRAM_GB: f32 = 8.0;
 
 pub fn gpu() -> Gpu {
     let mut command = Command::new("nvidia-smi");
@@ -89,7 +77,6 @@ fn parse_gpu(text: &str) -> Gpu {
                  Grafikspeicher und aktuellem Treiber – ohne läuft der KI-Motor nur sehr langsam oder gar nicht."
                     .into(),
             ),
-            music_warning: None,
         };
     };
     let vram_gb = (mib.parse::<f32>().unwrap_or(0.0) / 1024.0 * 10.0).round() / 10.0;
@@ -104,10 +91,7 @@ fn parse_gpu(text: &str) -> Gpu {
     } else {
         None
     };
-    let music_warning = (vram_gb < MUSIC_VRAM_GB).then(|| {
-        format!("Musik erzeugen braucht etwa 8 GB Grafikspeicher; mit {vram_gb} GB kann es sehr langsam werden oder abbrechen.")
-    });
-    Gpu { name: Some(name.to_string()), vram_gb, driver: driver.to_string(), problem, music_warning }
+    Gpu { name: Some(name.to_string()), vram_gb, driver: driver.to_string(), problem }
 }
 
 fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
@@ -156,10 +140,7 @@ pub fn sources_dir(resource_dir: Option<PathBuf>) -> PathBuf {
 }
 
 /// Führt `setup.ps1` aus. Fortschritt („@@ <Prozent> <Text>“) geht an `on_progress`.
-pub fn run(part: &str, sources: &Path, mut on_progress: impl FnMut(u32, &str)) -> Result<(), String> {
-    if !["core", "music"].contains(&part) {
-        return Err(format!("Unbekannter Teil: {part}"));
-    }
+pub fn run(sources: &Path, mut on_progress: impl FnMut(u32, &str)) -> Result<(), String> {
     {
         let mut running = RUNNING.lock().unwrap();
         if running.is_some() {
@@ -167,12 +148,12 @@ pub fn run(part: &str, sources: &Path, mut on_progress: impl FnMut(u32, &str)) -
         }
         *running = Some(0);
     }
-    let result = run_script(part, sources, &mut on_progress);
+    let result = run_script(sources, &mut on_progress);
     *RUNNING.lock().unwrap() = None;
     result
 }
 
-fn run_script(part: &str, sources: &Path, on_progress: &mut impl FnMut(u32, &str)) -> Result<(), String> {
+fn run_script(sources: &Path, on_progress: &mut impl FnMut(u32, &str)) -> Result<(), String> {
     install_sources(sources)?;
     let root = engine::data_root();
     let script = root.join("engine").join("setup.ps1");
@@ -182,7 +163,6 @@ fn run_script(part: &str, sources: &Path, on_progress: &mut impl FnMut(u32, &str
         .arg(&script)
         .arg("-Root")
         .arg(&root)
-        .args(["-Part", part])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -266,9 +246,8 @@ mod tests {
         let ok = parse_gpu("NVIDIA GeForce RTX 5070 Laptop GPU, 8151, 595.97\n");
         assert_eq!(ok.name.as_deref(), Some("NVIDIA GeForce RTX 5070 Laptop GPU"));
         assert_eq!(ok.vram_gb, 8.0);
-        assert!(ok.problem.is_none() && ok.music_warning.is_none());
-        let small = parse_gpu("NVIDIA GeForce GTX 1060, 6144, 560.94");
-        assert!(small.problem.is_none() && small.music_warning.is_some());
+        assert!(ok.problem.is_none());
+        assert!(parse_gpu("NVIDIA GeForce GTX 1060, 6144, 560.94").problem.is_none());
         assert!(parse_gpu("NVIDIA GeForce GT 1030, 2048, 560.94").problem.is_some());
         assert!(parse_gpu("NVIDIA GeForce RTX 3060, 12288, 472.12").problem.unwrap().contains("Treiber"));
         assert!(parse_gpu("").problem.unwrap().contains("Keine NVIDIA"));

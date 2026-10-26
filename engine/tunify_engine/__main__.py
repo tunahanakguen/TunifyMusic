@@ -99,21 +99,6 @@ def build_parser() -> argparse.ArgumentParser:
     tr.add_argument("--dereverb", action="store_true", help="Hall/Echo entfernen")
     tr.add_argument("--denoise", action="store_true", help="Rauschen reduzieren")
 
-    so = sub.add_parser("song", help="Lied oder Instrumental aus Text erzeugen (ACE-Step)")
-    so.add_argument("--caption", default="", help="Beschreibung: Stil, Instrumente, Stimmung")
-    so.add_argument("--lyrics", default="", help="Liedtext (leer = ohne Text); Abschnitte wie [Verse], [Chorus]")
-    so.add_argument("--instrumental", action="store_true", help="ohne Gesang")
-    so.add_argument("--duration", type=float, default=90, help="Sekunden, 10 … 480")
-    so.add_argument("--bpm", type=int, default=None, help="Tempo, leer = automatisch")
-    so.add_argument("--key", default="", help="Tonart, z. B. „C major“; leer = automatisch")
-    so.add_argument("--language", default="", help="Sprache des Gesangs, z. B. de, en; leer = automatisch")
-    so.add_argument("--seed", type=int, default=-1, help="Zufallszahl; gleiche Zahl = gleiches Lied")
-    so.add_argument("--reference", default="", help="Referenz-Lied als Vorlage für Klang und Stil")
-    so.add_argument("--voice-model", default="", help="RVC-Stimme (.pth): Gesang in dieser Stimme")
-    so.add_argument("--voice-index", default="", help="Index der Stimme (.index), optional")
-    so.add_argument("--pitch", type=int, default=0, help="Tonhöhe der Stimme, -12 … 12")
-    so.add_argument("--out", required=True, help="Ausgabedatei (.wav, .mp3, .flac)")
-
     return parser
 
 
@@ -151,9 +136,6 @@ def dispatch(args) -> None:
     elif args.command == "notes":
         from .notes import notes_mode
         notes_mode(args)
-    elif args.command == "song":
-        from .song import song
-        song(args)
     elif args.command == "serve":
         raise ValueError("serve läuft schon")
 

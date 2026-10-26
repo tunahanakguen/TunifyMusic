@@ -2,38 +2,28 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type SetupStatus = { core: boolean; music: boolean; folder: string };
+export type SetupStatus = { core: boolean; folder: string };
 type Progress = { percent: number; message: string };
-type Gpu = { name: string | null; vramGb: number; driver: string; problem: string | null; musicWarning: string | null };
+type Gpu = { name: string | null; vramGb: number; driver: string; problem: string | null };
 
-const PARTS = {
-  core: {
-    title: "Tunify Music einrichten",
-    text: "Beim ersten Start lädt Tunify den KI-Motor: Python mit PyTorch für die Grafikkarte, RVC (Applio), die Modelle zum Trennen von Gesang und Begleitung, FFmpeg und die Instrumenten-Klänge. Alles bleibt auf diesem PC.",
-    size: "ca. 8 GB Download, 12 GB auf der Festplatte · 15–40 Minuten je nach Internet",
-    button: "Jetzt einrichten",
-  },
-  music: {
-    title: "Musik erzeugen einrichten",
-    text: "Für „Lied erzeugen“ und „Instrumental erzeugen“ braucht Tunify zusätzlich ACE-Step mit eigener Umgebung und Musikmodellen.",
-    size: "ca. 12 GB Download, 14 GB auf der Festplatte · 20–60 Minuten je nach Internet",
-    button: "Musik erzeugen einrichten",
-  },
+const INFO = {
+  title: "Tunify Music einrichten",
+  text: "Beim ersten Start lädt Tunify den KI-Motor: Python mit PyTorch für die Grafikkarte, RVC (Applio), die Modelle zum Trennen von Gesang und Begleitung, FFmpeg und die Instrumenten-Klänge. Alles bleibt auf diesem PC.",
+  size: "ca. 8 GB Download, 12 GB auf der Festplatte · 15–40 Minuten je nach Internet",
+  button: "Jetzt einrichten",
 };
 
 type Props = {
-  part: "core" | "music";
   onDone: (status: SetupStatus) => void;
 };
 
-export default function SetupPanel({ part, onDone }: Props) {
+export default function SetupPanel({ onDone }: Props) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const [gpu, setGpu] = useState<Gpu | null>(null);
-  const info = PARTS[part];
-  const warning = gpu ? (gpu.problem ?? (part === "music" ? gpu.musicWarning : null)) : null;
+  const warning = gpu?.problem ?? null;
 
   useEffect(() => {
     invoke<Gpu>("check_gpu")
@@ -59,7 +49,7 @@ export default function SetupPanel({ part, onDone }: Props) {
     setCancelled(false);
     setProgress({ percent: 0, message: "Einrichtung startet …" });
     try {
-      onDone(await invoke<SetupStatus>("run_setup", { part }));
+      onDone(await invoke<SetupStatus>("run_setup"));
     } catch (e) {
       if (String(e) === "Abgebrochen") setCancelled(true);
       else setError(String(e));
@@ -71,9 +61,9 @@ export default function SetupPanel({ part, onDone }: Props) {
 
   return (
     <section className="card wide setup">
-      <h2>{info.title}</h2>
-      <p>{info.text}</p>
-      <p className="muted small">{info.size}</p>
+      <h2>{INFO.title}</h2>
+      <p>{INFO.text}</p>
+      <p className="muted small">{INFO.size}</p>
       {gpu && (
         <p className={warning ? "gpu-warning" : "muted small"}>
           {warning ?? `Grafikkarte: ${gpu.name} · ${gpu.vramGb} GB · Treiber ${gpu.driver}`}
@@ -81,7 +71,7 @@ export default function SetupPanel({ part, onDone }: Props) {
       )}
       <div className="actions">
         <button onClick={start} disabled={busy}>
-          {busy ? "Wird eingerichtet …" : cancelled || error ? "Weitermachen" : gpu?.problem ? "Trotzdem einrichten" : info.button}
+          {busy ? "Wird eingerichtet …" : cancelled || error ? "Weitermachen" : gpu?.problem ? "Trotzdem einrichten" : INFO.button}
         </button>
         {busy && (
           <button className="ghost" onClick={() => invoke("cancel_setup")}>
